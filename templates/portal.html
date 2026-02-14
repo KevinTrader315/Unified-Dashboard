@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalshi Trading Portal</title>
+<style>
+  :root {
+    --bg: #0a0e14;
+    --card: #111820;
+    --card-border: #1e2a3a;
+    --text: #e2e8f0;
+    --text-dim: #8899aa;
+    --accent: #3b82f6;
+    --green: #22c55e;
+    --red: #ef4444;
+    --orange: #f59e0b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    padding: 0 1rem;
+    height: 48px;
+    background: var(--card);
+    border-bottom: 1px solid var(--card-border);
+    flex-shrink: 0;
+  }
+  .header h1 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-right: 2rem;
+    white-space: nowrap;
+  }
+
+  /* Tab bar */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 0.6rem 1.2rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: inherit;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .tab.active {
+    color: var(--text);
+    border-bottom-color: var(--accent);
+    background: rgba(59,130,246,0.08);
+  }
+  .tab .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block;
+    background: var(--text-dim);
+  }
+  .tab .dot.healthy { background: var(--green); }
+  .tab .dot.unhealthy { background: var(--red); }
+
+  /* Panels */
+  .panel-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  .panel {
+    position: absolute;
+    inset: 0;
+    display: none;
+  }
+  .panel.active { display: flex; flex-direction: column; }
+
+  /* Overview panel */
+  .overview {
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
+  .overview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  .overview-header h2 { font-size: 1.1rem; font-weight: 600; }
+  .total-pnl {
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+  .total-pnl.positive { color: var(--green); }
+  .total-pnl.negative { color: var(--red); }
+  .total-pnl.zero { color: var(--text-dim); }
+
+  .bot-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+  }
+  .bot-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    border-left: 3px solid var(--text-dim);
+    transition: border-color 0.2s;
+  }
+  .bot-card:hover { border-color: var(--accent); }
+  .bot-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .bot-card-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+  .bot-badge {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .bot-badge.healthy { background: rgba(34,197,94,0.15); color: var(--green); }
+  .bot-badge.unhealthy { background: rgba(239,68,68,0.15); color: var(--red); }
+  .bot-badge.unknown { background: rgba(136,153,170,0.15); color: var(--text-dim); }
+
+  .bot-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+  .stat-item { }
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .stat-value.positive { color: var(--green); }
+  .stat-value.negative { color: var(--red); }
+
+  .bot-card .error-msg {
+    color: var(--red);
+    font-size: 0.8rem;
+    opacity: 0.8;
+  }
+
+  .bot-card .open-btn {
+    display: inline-block;
+    margin-top: 1rem;
+    font-size: 0.75rem;
+    color: var(--accent);
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-family: inherit;
+    padding: 0;
+  }
+  .bot-card .open-btn:hover { text-decoration: underline; }
+
+  /* Refresh indicator */
+  .refresh-info {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  /* Iframe panels */
+  .panel iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+  .iframe-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>KALSHI PORTAL</h1>
+  <div class="tabs" id="tabBar">
+    <button class="tab active" data-tab="overview">Overview</button>
+    {% for bot_id, bot in bots.items() %}
+    <button class="tab" data-tab="{{ bot_id }}">
+      <span class="dot" id="dot-{{ bot_id }}"></span>
+      {{ bot.short }}
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="panel-container">
+  <!-- Overview panel -->
+  <div class="panel active" id="panel-overview">
+    <div class="overview">
+      <div class="overview-header">
+        <h2>Portfolio Overview</h2>
+        <div>
+          <span class="total-pnl zero" id="totalPnl">$0.00</span>
+          <div class="refresh-info" id="refreshInfo">Loading...</div>
+        </div>
+      </div>
+      <div class="bot-cards" id="botCards"></div>
+    </div>
+  </div>
+
+  <!-- Bot iframe panels -->
+  {% for bot_id, bot in bots.items() %}
+  <div class="panel" id="panel-{{ bot_id }}">
+    <div class="iframe-loading" id="loading-{{ bot_id }}">Loading {{ bot.name }}...</div>
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+const BOTS = {{ bots | tojson }};
+const BOT_IDS = Object.keys(BOTS);
+let overviewData = null;
+let loadedIframes = {};
+
+// Tab switching
+document.getElementById('tabBar').addEventListener('click', function(e) {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  const target = tab.dataset.tab;
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  tab.classList.add('active');
+  document.getElementById('panel-' + target).classList.add('active');
+
+  // Lazy-load iframe
+  if (target !== 'overview' && !loadedIframes[target]) {
+    loadIframe(target);
+  }
+});
+
+function loadIframe(botId) {
+  loadedIframes[botId] = true;
+  const panel = document.getElementById('panel-' + botId);
+  const loading = document.getElementById('loading-' + botId);
+  const iframe = document.createElement('iframe');
+  iframe.src = '/bot/' + botId + '/';
+  iframe.onload = function() {
+    if (loading) loading.style.display = 'none';
+  };
+  panel.appendChild(iframe);
+}
+
+// Overview rendering
+function formatPnl(val) {
+  const sign = val >= 0 ? '+' : '';
+  return sign + '$' + Math.abs(val).toFixed(2);
+}
+
+function pnlClass(val) {
+  if (val > 0) return 'positive';
+  if (val < 0) return 'negative';
+  return 'zero';
+}
+
+function renderOverview(data) {
+  overviewData = data;
+
+  // Total P&L
+  const totalEl = document.getElementById('totalPnl');
+  totalEl.textContent = formatPnl(data.total_pnl);
+  totalEl.className = 'total-pnl ' + pnlClass(data.total_pnl);
+
+  // Refresh info
+  document.getElementById('refreshInfo').textContent =
+    'Updated ' + new Date().toLocaleTimeString();
+
+  // Bot cards
+  const container = document.getElementById('botCards');
+  container.innerHTML = '';
+
+  for (const [botId, bot] of Object.entries(data.bots)) {
+    const cfg = BOTS[botId] || {};
+    const card = document.createElement('div');
+    card.className = 'bot-card';
+    card.style.borderLeftColor = bot.color || cfg.color || '#666';
+
+    const isHealthy = bot.healthy;
+    const hasError = !!bot.error;
+
+    let statsHtml = '';
+    if (hasError) {
+      statsHtml = '<div class="error-msg">' + bot.error + '</div>';
+    } else {
+      statsHtml = '<div class="bot-stats">';
+      statsHtml += '<div class="stat-item"><div class="stat-label">P&L</div>' +
+        '<div class="stat-value ' + pnlClass(bot.pnl) + '">' + formatPnl(bot.pnl) + '</div></div>';
+      statsHtml += '<div class="stat-item"><div class="stat-label">Mode</div>' +
+        '<div class="stat-value">' + (bot.mode || 'N/A') + '</div></div>';
+
+      if (bot.win_rate !== undefined) {
+        statsHtml += '<div class="stat-item"><div class="stat-label">Win Rate</div>' +
+          '<div class="stat-value">' + bot.win_rate + '%</div></div>';
+      }
+      if (bot.completed !== undefined) {
+        statsHtml += '<div class="stat-item"><div class="stat-label">Trades</div>' +
+          '<div class="stat-value">' + bot.completed +
+          (bot.wins !== undefined ? ' (' + bot.wins + 'W)' : '') + '</div></div>';
+      }
+      if (bot.open_positions !== undefined) {
+        statsHtml += '<div class="stat-item"><div class="stat-label">Open</div>' +
+          '<div class="stat-value">' + bot.open_positions + '</div></div>';
+      }
+      if (bot.daily_trades !== undefined) {
+        statsHtml += '<div class="stat-item"><div class="stat-label">Daily Trades</div>' +
+          '<div class="stat-value">' + bot.daily_trades + '</div></div>';
+      }
+      if (bot.running !== undefined) {
+        statsHtml += '<div class="stat-item"><div class="stat-label">Running</div>' +
+          '<div class="stat-value">' + (bot.running ? 'Yes' : 'No') + '</div></div>';
+      }
+      statsHtml += '</div>';
+    }
+
+    const badgeClass = hasError ? 'unknown' : (isHealthy ? 'healthy' : 'unhealthy');
+    const badgeText = hasError ? 'UNREACHABLE' : (isHealthy ? 'HEALTHY' : 'UNHEALTHY');
+
+    card.innerHTML =
+      '<div class="bot-card-header">' +
+        '<span class="bot-card-title">' + bot.name + '</span>' +
+        '<span class="bot-badge ' + badgeClass + '">' + badgeText + '</span>' +
+      '</div>' +
+      statsHtml +
+      '<button class="open-btn" data-bot="' + botId + '">Open Dashboard &rarr;</button>';
+
+    container.appendChild(card);
+  }
+
+  // Update tab dots
+  for (const [botId, bot] of Object.entries(data.bots)) {
+    const dot = document.getElementById('dot-' + botId);
+    if (dot) {
+      dot.className = 'dot ' + (bot.error ? 'unhealthy' : (bot.healthy ? 'healthy' : 'unhealthy'));
+    }
+  }
+}
+
+// Open bot dashboard from card
+document.getElementById('botCards').addEventListener('click', function(e) {
+  const btn = e.target.closest('.open-btn');
+  if (!btn) return;
+  const botId = btn.dataset.bot;
+  // Activate the tab
+  const tab = document.querySelector('.tab[data-tab="' + botId + '"]');
+  if (tab) tab.click();
+});
+
+// Fetch overview data
+function fetchOverview() {
+  fetch('/api/overview')
+    .then(r => r.json())
+    .then(data => renderOverview(data))
+    .catch(err => {
+      document.getElementById('refreshInfo').textContent = 'Error: ' + err.message;
+    });
+}
+
+// Initial load + auto-refresh
+fetchOverview();
+setInterval(fetchOverview, 5000);
+</script>
+</body>
+</html>
