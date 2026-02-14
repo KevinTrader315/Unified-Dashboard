@@ -4,12 +4,30 @@ import os
 import re
 import requests
 from flask import Flask, request, Response, jsonify, render_template
+from functools import wraps
 
 from config import BOTS, BOT_HOST
 
 app = Flask(__name__)
 
 PROXY_TIMEOUT = 5  # seconds
+
+PORTAL_USER = os.environ.get("PORTAL_USER", "")
+PORTAL_PASS = os.environ.get("PORTAL_PASS", "")
+AUTH_ENABLED = bool(PORTAL_USER and PORTAL_PASS)
+
+
+def _auth_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not AUTH_ENABLED:
+            return f(*args, **kwargs)
+        auth = request.authorization
+        if not auth or auth.username != PORTAL_USER or auth.password != PORTAL_PASS:
+            return Response("Unauthorized", 401,
+                            {"WWW-Authenticate": 'Basic realm="Kalshi Portal"'})
+        return f(*args, **kwargs)
+    return decorated
 
 
 # ---------------------------------------------------------------------------
@@ -63,6 +81,7 @@ def _proxy(bot_id: str, path: str):
 
 @app.route("/proxy/<bot_id>/", defaults={"path": ""}, methods=["GET", "POST", "PUT", "DELETE"])
 @app.route("/proxy/<bot_id>/<path:path>", methods=["GET", "POST", "PUT", "DELETE"])
+@_auth_required
 def proxy_route(bot_id, path):
     if bot_id not in BOTS:
         return jsonify({"error": f"Unknown bot: {bot_id}"}), 404
@@ -94,6 +113,7 @@ _INTERCEPT_TEMPLATE = """
 
 
 @app.route("/bot/<bot_id>/")
+@_auth_required
 def bot_dashboard(bot_id):
     if bot_id not in BOTS:
         return jsonify({"error": f"Unknown bot: {bot_id}"}), 404
@@ -174,6 +194,7 @@ def _extract_sports_arb_status(data):
 
 
 @app.route("/api/overview")
+@_auth_required
 def overview():
     results = {}
     for bot_id, cfg in BOTS.items():
@@ -213,6 +234,7 @@ def overview():
 # ---------------------------------------------------------------------------
 
 @app.route("/")
+@_auth_required
 def index():
     return render_template("portal.html", bots=BOTS)
 
