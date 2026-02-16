@@ -206,6 +206,93 @@
     color: var(--text-dim);
     font-size: 0.9rem;
   }
+
+  /* Capital panel */
+  .capital { padding: 1.5rem; overflow-y: auto; }
+  .capital-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  .capital-header h2 { font-size: 1.1rem; font-weight: 600; }
+  .capital-total {
+    font-size: 1.5rem; font-weight: 700;
+  }
+
+  .sub-cards {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem; margin-bottom: 2rem;
+  }
+  .sub-card {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 8px; padding: 1.25rem; border-left: 3px solid var(--text-dim);
+  }
+  .sub-card-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.75rem;
+  }
+  .sub-card-label { font-size: 0.95rem; font-weight: 600; }
+  .sub-card-badge {
+    font-size: 0.65rem; padding: 2px 6px; border-radius: 4px;
+    background: rgba(59,130,246,0.15); color: var(--accent); font-weight: 600;
+  }
+  .sub-card-balance {
+    font-size: 1.4rem; font-weight: 700; margin-bottom: 0.5rem;
+  }
+  .sub-card-bot {
+    font-size: 0.75rem; color: var(--text-dim);
+  }
+
+  .capital-section {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 8px; padding: 1.25rem; margin-bottom: 1.5rem;
+  }
+  .capital-section h3 {
+    font-size: 0.9rem; font-weight: 600; margin-bottom: 1rem;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .form-row {
+    display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
+  .form-group label {
+    font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase;
+  }
+  .form-group select, .form-group input {
+    background: var(--bg); border: 1px solid var(--card-border); color: var(--text);
+    padding: 0.5rem 0.75rem; border-radius: 4px; font-family: inherit; font-size: 0.85rem;
+    min-width: 140px;
+  }
+  .btn {
+    padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer;
+    font-family: inherit; font-size: 0.8rem; font-weight: 600;
+    transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-small { padding: 0.3rem 0.6rem; font-size: 0.7rem; }
+
+  .feedback {
+    margin-top: 0.75rem; font-size: 0.8rem; min-height: 1.2em;
+  }
+  .feedback.ok { color: var(--green); }
+  .feedback.err { color: var(--red); }
+
+  .mgmt-table {
+    width: 100%; font-size: 0.8rem; border-collapse: collapse;
+  }
+  .mgmt-table th, .mgmt-table td {
+    padding: 0.5rem 0.75rem; text-align: left;
+    border-bottom: 1px solid var(--card-border);
+  }
+  .mgmt-table th { color: var(--text-dim); font-weight: 600; text-transform: uppercase; font-size: 0.7rem; }
+  .mgmt-table input, .mgmt-table select {
+    background: var(--bg); border: 1px solid var(--card-border); color: var(--text);
+    padding: 0.3rem 0.5rem; border-radius: 4px; font-family: inherit; font-size: 0.8rem;
+    width: 100%;
+  }
 </style>
 </head>
 <body>
@@ -214,6 +301,7 @@
   <h1>KALSHI PORTAL</h1>
   <div class="tabs" id="tabBar">
     <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="capital">$ Capital</button>
     {% for bot_id, bot in bots.items() %}
     <button class="tab" data-tab="{{ bot_id }}">
       <span class="dot" id="dot-{{ bot_id }}"></span>
@@ -235,6 +323,77 @@
         </div>
       </div>
       <div class="bot-cards" id="botCards"></div>
+    </div>
+  </div>
+
+  <!-- Capital panel -->
+  <div class="panel" id="panel-capital">
+    <div class="capital">
+      <div class="capital-header">
+        <h2>Capital Management</h2>
+        <div>
+          <span class="capital-total" id="capitalTotal">$0.00</span>
+          <div class="refresh-info" id="capitalRefresh">Loading...</div>
+        </div>
+      </div>
+
+      <div class="sub-cards" id="capitalCards"></div>
+
+      <div class="capital-section">
+        <h3>Allocate Capital</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Bot</label>
+            <select id="allocBot"></select>
+          </div>
+          <div class="form-group">
+            <label>Label</label>
+            <input type="text" id="allocLabel" placeholder="e.g. BTC Range">
+          </div>
+          <div class="form-group">
+            <label>Amount ($)</label>
+            <input type="number" id="allocAmount" min="0" step="0.01" placeholder="0.00">
+          </div>
+          <button class="btn btn-green" id="allocBtn" onclick="doAllocate()">Allocate</button>
+        </div>
+        <div class="feedback" id="allocFeedback"></div>
+      </div>
+
+      <div class="capital-section">
+        <h3>Transfer Funds</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label>From</label>
+            <select id="xferFrom"></select>
+          </div>
+          <div class="form-group">
+            <label>To</label>
+            <select id="xferTo"></select>
+          </div>
+          <div class="form-group">
+            <label>Amount ($)</label>
+            <input type="number" id="xferAmount" min="0.01" step="0.01" placeholder="0.00">
+          </div>
+          <button class="btn btn-primary" id="xferBtn" onclick="doTransfer()">Transfer</button>
+        </div>
+        <div class="feedback" id="xferFeedback"></div>
+      </div>
+
+      <div class="capital-section">
+        <h3>Allocations</h3>
+        <table class="mgmt-table">
+          <thead><tr><th>Bot</th><th>Label</th><th>Allocation</th><th>P&L</th><th>Effective</th><th></th></tr></thead>
+          <tbody id="mgmtBody"></tbody>
+        </table>
+      </div>
+
+      <div class="capital-section">
+        <h3>Transfer History</h3>
+        <table class="mgmt-table" id="xferHistory">
+          <thead><tr><th>Time</th><th>From</th><th>To</th><th>Amount</th></tr></thead>
+          <tbody id="xferHistoryBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -263,8 +422,8 @@ document.getElementById('tabBar').addEventListener('click', function(e) {
   tab.classList.add('active');
   document.getElementById('panel-' + target).classList.add('active');
 
-  // Lazy-load iframe
-  if (target !== 'overview' && !loadedIframes[target]) {
+  // Lazy-load iframe (skip non-bot tabs)
+  if (target !== 'overview' && target !== 'capital' && !loadedIframes[target]) {
     loadIframe(target);
   }
 });
@@ -398,6 +557,225 @@ function fetchOverview() {
 // Initial load + auto-refresh
 fetchOverview();
 setInterval(fetchOverview, 5000);
+
+// ---- Capital tab (virtual ledger) ----
+let capitalData = null;
+let capitalInterval = null;
+
+// Auto-refresh capital when tab is active
+document.getElementById('tabBar').addEventListener('click', function(e) {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+  if (tab.dataset.tab === 'capital') {
+    fetchCapital();
+    fetchTransferHistory();
+    if (!capitalInterval) capitalInterval = setInterval(function() { fetchCapital(); fetchTransferHistory(); }, 10000);
+  } else {
+    if (capitalInterval) { clearInterval(capitalInterval); capitalInterval = null; }
+  }
+});
+
+function centsToStr(c) { return '$' + (Math.abs(c) / 100).toFixed(2); }
+function centsToSigned(c) { return (c >= 0 ? '+' : '-') + centsToStr(c); }
+
+function fetchCapital() {
+  fetch('/api/capital')
+    .then(r => { if (!r.ok) throw new Error('Error ' + r.status); return r.json(); })
+    .then(data => { capitalData = data; renderCapital(); })
+    .catch(err => {
+      document.getElementById('capitalRefresh').textContent = err.message;
+    });
+}
+
+function renderCapital() {
+  if (!capitalData) return;
+  const d = capitalData;
+
+  // Header total
+  const totalEl = document.getElementById('capitalTotal');
+  if (d.real_balance !== null) {
+    totalEl.textContent = '$' + (d.real_balance / 100).toFixed(2);
+    totalEl.className = 'capital-total ' + pnlClass(d.real_balance);
+  } else {
+    totalEl.textContent = 'N/A';
+    totalEl.className = 'capital-total';
+  }
+  document.getElementById('capitalRefresh').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+  // Cards: one per account + unallocated
+  const container = document.getElementById('capitalCards');
+  container.innerHTML = '';
+
+  // Unallocated card
+  const unCard = document.createElement('div');
+  unCard.className = 'sub-card';
+  unCard.style.borderLeftColor = 'var(--accent)';
+  const unBal = d.unallocated !== null ? d.unallocated : 0;
+  unCard.innerHTML =
+    '<div class="sub-card-header">' +
+      '<span class="sub-card-label">Unallocated</span>' +
+      '<span class="sub-card-badge">POOL</span>' +
+    '</div>' +
+    '<div class="sub-card-balance ' + pnlClass(unBal) + '">' + (d.unallocated !== null ? '$' + (unBal / 100).toFixed(2) : 'N/A') + '</div>' +
+    '<div class="sub-card-bot">Real balance minus allocations</div>';
+  container.appendChild(unCard);
+
+  // Per-bot cards
+  d.accounts.forEach(function(a) {
+    const card = document.createElement('div');
+    card.className = 'sub-card';
+    card.style.borderLeftColor = a.color || '#888';
+    card.innerHTML =
+      '<div class="sub-card-header">' +
+        '<span class="sub-card-label">' + a.label + '</span>' +
+        '<span class="sub-card-badge">' + a.id + '</span>' +
+      '</div>' +
+      '<div class="sub-card-balance">' + centsToStr(a.effective) + '</div>' +
+      '<div class="bot-stats" style="margin-top:0.5rem">' +
+        '<div class="stat-item"><div class="stat-label">Allocation</div><div class="stat-value">' + centsToStr(a.allocation) + '</div></div>' +
+        '<div class="stat-item"><div class="stat-label">P&L</div><div class="stat-value ' + pnlClass(a.pnl) + '">' + centsToSigned(a.pnl) + '</div></div>' +
+      '</div>';
+    container.appendChild(card);
+  });
+
+  // Allocate form: populate bot dropdown (only bots not yet allocated)
+  const allocatedIds = d.accounts.map(function(a) { return a.id; });
+  const allocSel = document.getElementById('allocBot');
+  const prevAlloc = allocSel.value;
+  allocSel.innerHTML = '';
+  BOT_IDS.forEach(function(id) {
+    if (allocatedIds.indexOf(id) === -1) {
+      allocSel.innerHTML += '<option value="' + id + '">' + BOTS[id].name + '</option>';
+    }
+  });
+  // Also allow re-allocating existing bots (to update amount)
+  d.accounts.forEach(function(a) {
+    allocSel.innerHTML += '<option value="' + a.id + '">' + a.label + ' (update)</option>';
+  });
+  if (prevAlloc) allocSel.value = prevAlloc;
+
+  // Auto-fill label when bot selected
+  allocSel.onchange = function() {
+    const id = allocSel.value;
+    if (BOTS[id]) document.getElementById('allocLabel').value = BOTS[id].name;
+  };
+  // Trigger initial fill if empty
+  if (!document.getElementById('allocLabel').value && allocSel.value && BOTS[allocSel.value]) {
+    document.getElementById('allocLabel').value = BOTS[allocSel.value].name;
+  }
+
+  // Transfer dropdowns: all accounts + unallocated
+  ['xferFrom', 'xferTo'].forEach(function(selId) {
+    const sel = document.getElementById(selId);
+    const prev = sel.value;
+    sel.innerHTML = '<option value="unallocated">Unallocated</option>';
+    d.accounts.forEach(function(a) {
+      sel.innerHTML += '<option value="' + a.id + '">' + a.label + ' (' + centsToStr(a.allocation) + ')</option>';
+    });
+    if (prev) sel.value = prev;
+  });
+
+  // Management table
+  const tbody = document.getElementById('mgmtBody');
+  tbody.innerHTML = '';
+  d.accounts.forEach(function(a) {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + a.id + '</td>' +
+      '<td>' + a.label + '</td>' +
+      '<td>' + centsToStr(a.allocation) + '</td>' +
+      '<td class="' + pnlClass(a.pnl) + '">' + centsToSigned(a.pnl) + '</td>' +
+      '<td>' + centsToStr(a.effective) + '</td>' +
+      '<td><button class="btn btn-red btn-small" onclick="removeAllocation(\'' + a.id + '\')">Remove</button></td>';
+    tbody.appendChild(tr);
+  });
+  if (d.accounts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text-dim);text-align:center">No allocations yet</td></tr>';
+  }
+}
+
+function doAllocate() {
+  const botId = document.getElementById('allocBot').value;
+  const label = document.getElementById('allocLabel').value.trim();
+  const amt = parseFloat(document.getElementById('allocAmount').value);
+  const fb = document.getElementById('allocFeedback');
+  if (!botId) { fb.textContent = 'Select a bot'; fb.className = 'feedback err'; return; }
+  if (!label) { fb.textContent = 'Label is required'; fb.className = 'feedback err'; return; }
+  if (isNaN(amt) || amt < 0) { fb.textContent = 'Enter a valid amount'; fb.className = 'feedback err'; return; }
+  document.getElementById('allocBtn').disabled = true;
+  fetch('/api/capital/allocate', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({bot_id: botId, label: label, amount: amt})
+  })
+  .then(r => r.json().then(d => ({ok: r.ok, data: d})))
+  .then(function(res) {
+    fb.textContent = res.ok ? 'Allocated $' + amt.toFixed(2) + ' to ' + label : (res.data.error || 'Failed');
+    fb.className = 'feedback ' + (res.ok ? 'ok' : 'err');
+    if (res.ok) { document.getElementById('allocAmount').value = ''; fetchCapital(); fetchTransferHistory(); }
+  })
+  .catch(e => { fb.textContent = e.message; fb.className = 'feedback err'; })
+  .finally(() => { document.getElementById('allocBtn').disabled = false; });
+}
+
+function doTransfer() {
+  const from = document.getElementById('xferFrom').value;
+  const to = document.getElementById('xferTo').value;
+  const amt = parseFloat(document.getElementById('xferAmount').value);
+  const fb = document.getElementById('xferFeedback');
+  if (!amt || amt <= 0) { fb.textContent = 'Enter a valid amount'; fb.className = 'feedback err'; return; }
+  if (from === to) { fb.textContent = 'From and To must differ'; fb.className = 'feedback err'; return; }
+  const fromLabel = from === 'unallocated' ? 'Unallocated' : from;
+  const toLabel = to === 'unallocated' ? 'Unallocated' : to;
+  if (!confirm('Transfer $' + amt.toFixed(2) + ' from ' + fromLabel + ' to ' + toLabel + '?')) return;
+  document.getElementById('xferBtn').disabled = true;
+  fetch('/api/capital/transfer', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({from: from, to: to, amount: amt})
+  })
+  .then(r => r.json().then(d => ({ok: r.ok, data: d})))
+  .then(function(res) {
+    fb.textContent = res.ok ? 'Transfer complete' : (res.data.error || 'Transfer failed');
+    fb.className = 'feedback ' + (res.ok ? 'ok' : 'err');
+    if (res.ok) { document.getElementById('xferAmount').value = ''; fetchCapital(); fetchTransferHistory(); }
+  })
+  .catch(e => { fb.textContent = e.message; fb.className = 'feedback err'; })
+  .finally(() => { document.getElementById('xferBtn').disabled = false; });
+}
+
+function removeAllocation(botId) {
+  if (!confirm('Remove allocation for ' + botId + '? Funds return to unallocated pool.')) return;
+  fetch('/api/capital/' + botId, {method: 'DELETE'})
+    .then(r => { if (!r.ok) throw new Error('Remove failed'); return r.json(); })
+    .then(() => fetchCapital())
+    .catch(e => alert(e.message));
+}
+
+function fetchTransferHistory() {
+  fetch('/api/capital/transfers?limit=20')
+    .then(r => { if (!r.ok) throw new Error('Error'); return r.json(); })
+    .then(function(data) {
+      const tbody = document.getElementById('xferHistoryBody');
+      tbody.innerHTML = '';
+      const xfers = data.transfers || [];
+      if (xfers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-dim);text-align:center">No transfers yet</td></tr>';
+        return;
+      }
+      xfers.forEach(function(t) {
+        const tr = document.createElement('tr');
+        const ts = new Date(t.ts).toLocaleString();
+        const fromLabel = t.from === 'unallocated' ? 'Unallocated' : t.from;
+        const toLabel = t.to === 'unallocated' ? 'Unallocated' : t.to;
+        tr.innerHTML =
+          '<td>' + ts + '</td>' +
+          '<td>' + fromLabel + '</td>' +
+          '<td>' + toLabel + '</td>' +
+          '<td>' + centsToStr(t.amount) + '</td>';
+        tbody.appendChild(tr);
+      });
+    })
+    .catch(function() {});
+}
 </script>
 </body>
 </html>

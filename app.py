@@ -1,5 +1,6 @@
 """Unified portal — proxies to per-bot dashboards and aggregates overview."""
 
+import logging
 import os
 import re
 import requests
@@ -7,6 +8,8 @@ from flask import Flask, request, Response, jsonify, render_template
 from functools import wraps
 
 from config import BOTS, BOT_HOST
+
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -227,6 +230,177 @@ def overview():
 
     total_pnl = sum(b.get("pnl", 0) for b in results.values())
     return jsonify({"bots": results, "total_pnl": round(total_pnl, 2)})
+
+
+# ---------------------------------------------------------------------------
+# Capital management (virtual ledger)
+# ---------------------------------------------------------------------------
+
+_kalshi_client = None
+_capital_store = None
+
+
+def _get_kalshi_client():
+    global _kalshi_client
+    if _kalshi_client is None:
+        api_key = os.environ.get("KALSHI_API_KEY")
+        pk_path = os.environ.get("KALSHI_PRIVATE_KEY_PATH")
+        if api_key and pk_path:
+            from kalshi_client import KalshiClient
+            _kalshi_client = KalshiClient(api_key, pk_path)
+    return _kalshi_client
+
+
+def _get_capital_store():
+    global _capital_store
+    if _capital_store is None:
+        from subaccount_store import CapitalStore
+        _capital_store = CapitalStore()
+    return _capital_store
+
+
+def _get_bot_pnl():
+    """Fetch P&L for each bot (in dollars). Returns {bot_id: pnl_dollars}."""
+    pnl = {}
+    for bot_id, cfg in BOTS.items():
+        try:
+            health_url = _bot_base(bot_id) + cfg["health_endpoint"]
+            resp = requests.get(health_url, auth=_bot_auth(bot_id), timeout=PROXY_TIMEOUT)
+            resp.raise_for_status()
+            data = resp.json()
+            extractor = cfg.get("pnl_extractor")
+            if extractor == "weather":
+                pnl[bot_id] = _extract_weather(data).get("pnl", 0)
+            elif extractor == "btc_range":
+                pnl[bot_id] = _extract_btc_range(data).get("pnl", 0)
+            elif extractor == "sports_arb":
+                try:
+                    status_url = _bot_base(bot_id) + cfg.get("status_endpoint", "/api/status")
+                    sr = requests.get(status_url, auth=_bot_auth(bot_id), timeout=PROXY_TIMEOUT)
+                    sr.raise_for_status()
+                    pnl[bot_id] = _extract_sports_arb_status(sr.json()).get("pnl", 0)
+                except requests.RequestException:
+                    pnl[bot_id] = 0
+        except requests.RequestException:
+            pnl[bot_id] = 0
+    return pnl
+
+
+@app.route("/api/capital", methods=["GET"])
+@_auth_required
+def get_capital():
+    """Return virtual accounts merged with real Kalshi balance and bot P&L."""
+    store = _get_capital_store()
+    accounts = store.get_accounts()
+    total_allocated = store.get_total_allocated()
+
+    # Real Kalshi balance (cents), None if creds not set
+    real_balance = None
+    client = _get_kalshi_client()
+    if client:
+        try:
+            real_balance = client.get_balance()
+        except Exception as e:
+            logger.warning("Failed to fetch Kalshi balance: %s", e)
+
+    # Bot P&L
+    bot_pnl = _get_bot_pnl()
+
+    # Build account list
+    account_list = []
+    for bot_id, acct in accounts.items():
+        alloc = acct.get("allocation", 0)
+        pnl_dollars = bot_pnl.get(bot_id, 0)
+        pnl_cents = int(round(pnl_dollars * 100))
+        color = BOTS[bot_id]["color"] if bot_id in BOTS else "#888"
+        account_list.append({
+            "id": bot_id,
+            "label": acct.get("label", bot_id),
+            "allocation": alloc,
+            "pnl": pnl_cents,
+            "effective": alloc + pnl_cents,
+            "color": color,
+        })
+
+    unallocated = (real_balance - total_allocated) if real_balance is not None else None
+
+    return jsonify({
+        "real_balance": real_balance,
+        "total_allocated": total_allocated,
+        "unallocated": unallocated,
+        "accounts": account_list,
+    })
+
+
+@app.route("/api/capital/allocate", methods=["POST"])
+@_auth_required
+def allocate_capital():
+    """Create or update a virtual allocation. Amount is in dollars."""
+    data = request.get_json(force=True)
+    bot_id = data.get("bot_id", "").strip()
+    label = data.get("label", "").strip()
+    amount = data.get("amount")
+    if not bot_id:
+        return jsonify({"error": "bot_id is required"}), 400
+    if not label:
+        return jsonify({"error": "label is required"}), 400
+    if amount is None or float(amount) < 0:
+        return jsonify({"error": "amount must be >= 0"}), 400
+    try:
+        amount_cents = int(round(float(amount) * 100))
+        _get_capital_store().allocate(bot_id, label, amount_cents)
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.exception("Allocate failed")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/capital/<bot_id>", methods=["DELETE"])
+@_auth_required
+def remove_capital(bot_id):
+    """Remove a virtual allocation."""
+    try:
+        _get_capital_store().remove(bot_id)
+        return jsonify({"ok": True})
+    except Exception as e:
+        logger.exception("Remove failed")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/capital/transfer", methods=["POST"])
+@_auth_required
+def transfer_capital():
+    """Transfer between virtual accounts. Amount is in dollars."""
+    data = request.get_json(force=True)
+    from_id = data.get("from", "").strip()
+    to_id = data.get("to", "").strip()
+    amount = data.get("amount")
+    if not from_id or not to_id:
+        return jsonify({"error": "from and to are required"}), 400
+    if amount is None or float(amount) <= 0:
+        return jsonify({"error": "amount must be positive"}), 400
+    try:
+        amount_cents = int(round(float(amount) * 100))
+        _get_capital_store().transfer(from_id, to_id, amount_cents)
+        return jsonify({"ok": True})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        logger.exception("Transfer failed")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/capital/transfers", methods=["GET"])
+@_auth_required
+def get_capital_transfers():
+    """Return recent transfer history."""
+    limit = request.args.get("limit", 20, type=int)
+    try:
+        transfers = _get_capital_store().get_transfers(limit=limit)
+        return jsonify({"transfers": transfers})
+    except Exception as e:
+        logger.exception("Failed to fetch transfers")
+        return jsonify({"error": str(e)}), 500
 
 
 # ---------------------------------------------------------------------------
