@@ -110,6 +110,58 @@ _INTERCEPT_TEMPLATE = """
             url = '/proxy/{bot_id}' + url;
         return _origOpen.apply(this, arguments);
     }};
+
+    // --- Capital allocation banner ---
+    var _botId = '{bot_id}';
+    var _botColor = '{bot_color}';
+
+    function _fmtDollars(cents) {{
+        var abs = Math.abs(cents) / 100;
+        var s = '$' + abs.toFixed(2);
+        return cents < 0 ? '-' + s : s;
+    }}
+
+    function _updateCapitalBanner() {{
+        _origFetch.call(window, '/api/capital').then(function(r) {{
+            return r.json();
+        }}).then(function(data) {{
+            var acct = null;
+            (data.accounts || []).forEach(function(a) {{
+                if (a.id === _botId) acct = a;
+            }});
+
+            var banner = document.getElementById('portal-capital-banner');
+            if (!banner) {{
+                banner = document.createElement('div');
+                banner.id = 'portal-capital-banner';
+                banner.style.cssText = 'position:fixed;top:0;left:0;right:0;height:32px;z-index:999999;'
+                    + 'display:flex;align-items:center;font-family:monospace;font-size:12px;'
+                    + 'background:#0d1117;color:#c9d1d9;border-bottom:1px solid #21262d;'
+                    + 'border-left:3px solid ' + _botColor + ';padding:0 12px;gap:16px;';
+                document.body.prepend(banner);
+                document.body.style.paddingTop = '32px';
+            }}
+
+            if (!acct) {{
+                banner.innerHTML = '<span style="color:#8b949e">No capital allocated &mdash; configure in Portal &gt; Capital tab</span>';
+                return;
+            }}
+
+            var pnlColor = acct.pnl >= 0 ? '#3fb950' : '#f85149';
+            var pnlSign = acct.pnl >= 0 ? '+' : '';
+            banner.innerHTML =
+                '<span style="color:#8b949e">ALLOCATED:</span> <span style="color:#e6edf3;font-weight:bold">' + _fmtDollars(acct.allocation) + '</span>'
+                + '<span style="color:#8b949e;margin-left:12px">P&amp;L:</span> <span style="color:' + pnlColor + ';font-weight:bold">' + pnlSign + _fmtDollars(acct.pnl) + '</span>'
+                + '<span style="color:#8b949e;margin-left:12px">EFFECTIVE:</span> <span style="color:#e6edf3;font-weight:bold">' + _fmtDollars(acct.effective) + '</span>';
+        }}).catch(function() {{}});
+    }}
+
+    if (document.readyState === 'loading') {{
+        document.addEventListener('DOMContentLoaded', _updateCapitalBanner);
+    }} else {{
+        _updateCapitalBanner();
+    }}
+    setInterval(_updateCapitalBanner, 30000);
 }})();
 </script>
 """
@@ -127,7 +179,8 @@ def bot_dashboard(bot_id):
             timeout=PROXY_TIMEOUT,
         )
         html = resp.text
-        intercept = _INTERCEPT_TEMPLATE.format(bot_id=bot_id)
+        bot_color = BOTS[bot_id].get("color", "#888")
+        intercept = _INTERCEPT_TEMPLATE.format(bot_id=bot_id, bot_color=bot_color)
         # Inject right after <head> (or at start if no <head>)
         if re.search(r"<head[^>]*>", html, re.IGNORECASE):
             html = re.sub(r"(<head[^>]*>)", r"\1" + intercept, html, count=1, flags=re.IGNORECASE)
