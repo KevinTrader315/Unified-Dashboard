@@ -196,6 +196,48 @@ struct EmptyState: View {
     }
 }
 
+// MARK: - Error Banner
+
+struct ErrorBanner: View {
+    let message: String
+    var onRetry: (() -> Void)? = nil
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "wifi.exclamationmark")
+                .font(.system(size: 13))
+                .foregroundStyle(.portalRed)
+            Text(message)
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundStyle(.portalRed)
+                .lineLimit(2)
+            Spacer()
+            if let onRetry {
+                Button {
+                    Haptic.tap()
+                    onRetry()
+                } label: {
+                    Text("Retry")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.portalRed)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(.portalRed.opacity(0.12))
+                        .clipShape(Capsule())
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(.portalRed.opacity(0.08))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(.portalRed.opacity(0.15), lineWidth: 1)
+        )
+    }
+}
+
 // MARK: - Haptics
 
 enum Haptic {

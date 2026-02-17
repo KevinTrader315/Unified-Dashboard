@@ -87,17 +87,9 @@ struct CapitalView: View {
                 }
 
                 if let error {
-                    HStack(spacing: 8) {
-                        Image(systemName: "wifi.exclamationmark")
-                            .foregroundStyle(.portalRed)
-                        Text(error)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(.portalRed)
+                    ErrorBanner(message: error) {
+                        Task { await fetchAll() }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(.portalRed.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
             }
             .padding()

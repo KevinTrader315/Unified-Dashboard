@@ -7,53 +7,55 @@ struct OverviewView: View {
     @State private var lastUpdated: Date?
     @State private var refreshTask: Task<Void, Never>?
     @State private var isLoading = true
+    @State private var cardsAppeared = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                // Drag indicator
-                Capsule()
-                    .fill(Color.textDim.opacity(0.4))
-                    .frame(width: 36, height: 5)
-                    .padding(.top, 8)
+                // Screen header
+                HStack {
+                    Text("Portfolio")
+                        .font(.system(size: 20, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.textPrimary)
+                    Spacer()
+                    if let lastUpdated {
+                        Text(lastUpdated, style: .relative)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.textDim)
+                    }
+                }
+                .padding(.top, 4)
 
                 if isLoading && overview == nil {
                     LoadingCard()
+                    LoadingCard()
                 } else if let overview {
                     // Hero P&L
+                    let botCount = overview.bots.count
                     GlowNumber(
                         label: "Total P&L",
                         value: Fmt.pnl(overview.totalPnl),
                         color: Fmt.pnlColor(overview.totalPnl),
-                        subtitle: "USD"
+                        subtitle: "\(botCount) bot\(botCount == 1 ? "" : "s") active"
                     )
+                    .offset(y: cardsAppeared ? 0 : 12)
+                    .opacity(cardsAppeared ? 1 : 0)
 
                     // Bot cards
                     let sortedBots = overview.bots.sorted(by: { $0.key < $1.key })
-                    ForEach(sortedBots, id: \.key) { botId, bot in
-                        var mutBot = bot
-                        mutBot.id = botId
-                        BotCardView(botId: botId, bot: mutBot)
-                            .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    ForEach(Array(sortedBots.enumerated()), id: \.element.key) { index, pair in
+                        var mutBot = pair.value
+                        mutBot.id = pair.key
+                        BotCardView(botId: pair.key, bot: mutBot)
+                            .offset(y: cardsAppeared ? 0 : CGFloat(16 + index * 4))
+                            .opacity(cardsAppeared ? 1 : 0)
                     }
                 }
 
                 if let error {
-                    HStack(spacing: 8) {
-                        Image(systemName: "wifi.exclamationmark")
-                            .foregroundStyle(.portalRed)
-                        Text(error)
-                            .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(.portalRed)
+                    ErrorBanner(message: error) {
+                        Task { await fetchOnce() }
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(12)
-                    .background(.portalRed.opacity(0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 10)
-                            .stroke(.portalRed.opacity(0.2), lineWidth: 1)
-                    )
                 }
             }
             .padding()
@@ -92,11 +94,17 @@ struct OverviewView: View {
             }
             response = OverviewResponse(bots: updatedBots, totalPnl: response.totalPnl)
             await MainActor.run {
+                let wasLoading = self.isLoading
                 withAnimation(.easeInOut(duration: 0.25)) {
                     self.overview = response
                     self.lastUpdated = Date()
                     self.error = nil
                     self.isLoading = false
+                }
+                if wasLoading {
+                    withAnimation(.easeOut(duration: 0.5).delay(0.05)) {
+                        self.cardsAppeared = true
+                    }
                 }
             }
         } catch {
