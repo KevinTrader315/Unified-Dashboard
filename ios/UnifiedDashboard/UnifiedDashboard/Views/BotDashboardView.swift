@@ -15,12 +15,33 @@ struct BotDashboardView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Drag indicator
-            Capsule()
-                .fill(Color.textDim.opacity(0.4))
-                .frame(width: 36, height: 5)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
+            // Screen header
+            HStack {
+                Text("Dashboards")
+                    .font(.system(size: 20, weight: .bold, design: .monospaced))
+                    .foregroundStyle(.textPrimary)
+                Spacer()
+                Button {
+                    Haptic.tap()
+                    isWebViewLoading = true
+                    let current = selectedBot
+                    selectedBot = ""
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        selectedBot = current
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.textDim)
+                        .frame(width: 32, height: 32)
+                        .background(Color.cardBg)
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color.cardBorder, lineWidth: 1))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
 
             // Bot selector bar
             ScrollView(.horizontal, showsIndicators: false) {

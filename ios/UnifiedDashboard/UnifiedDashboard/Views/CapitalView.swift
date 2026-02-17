@@ -29,11 +29,19 @@ struct CapitalView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                // Drag indicator
-                Capsule()
-                    .fill(Color.textDim.opacity(0.4))
-                    .frame(width: 36, height: 5)
-                    .padding(.top, 8)
+                // Screen header
+                HStack {
+                    Text("Capital")
+                        .font(.system(size: 20, weight: .bold, design: .monospaced))
+                        .foregroundStyle(.textPrimary)
+                    Spacer()
+                    if let lastUpdated {
+                        Text(lastUpdated, style: .relative)
+                            .font(.system(size: 10, design: .monospaced))
+                            .foregroundStyle(.textDim)
+                    }
+                }
+                .padding(.top, 4)
 
                 if isLoading && capital == nil {
                     LoadingCard()
@@ -78,7 +86,7 @@ struct CapitalView: View {
                     label: "Kalshi Account",
                     value: Fmt.dollars(balance),
                     color: .textPrimary,
-                    subtitle: "USD",
+                    subtitle: capital?.unallocated.map { "Unallocated: \(Fmt.dollars($0))" } ?? "USD",
                     icon: "dollarsign.circle.fill"
                 )
             } else {
@@ -86,7 +94,7 @@ struct CapitalView: View {
                     label: "Kalshi Account",
                     value: Fmt.dollars(capital?.totalAllocated ?? 0),
                     color: .textPrimary,
-                    subtitle: "USD",
+                    subtitle: "\(capital?.accounts.count ?? 0) bot\((capital?.accounts.count ?? 0) == 1 ? "" : "s") allocated",
                     icon: "dollarsign.circle.fill"
                 )
             }
