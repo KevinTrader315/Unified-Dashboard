@@ -130,12 +130,25 @@ struct CapitalView: View {
     // MARK: - Account cards
 
     private var accountCards: some View {
-        ForEach(capital?.accounts ?? []) { account in
-            CapitalCardView(
-                account: account,
-                totalAllocated: capital?.totalAllocated ?? 0
-            ) {
-                Task { await removeAllocation(account.id) }
+        Group {
+            if let accounts = capital?.accounts, accounts.isEmpty {
+                VStack(spacing: 6) {
+                    EmptyState(
+                        icon: "tray",
+                        title: "No Allocations",
+                        message: "Tap \"Allocate\" to assign capital to a bot"
+                    )
+                }
+                .cardStyle()
+            } else {
+                ForEach(capital?.accounts ?? []) { account in
+                    CapitalCardView(
+                        account: account,
+                        totalAllocated: capital?.totalAllocated ?? 0
+                    ) {
+                        Task { await removeAllocation(account.id) }
+                    }
+                }
             }
         }
     }

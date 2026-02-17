@@ -12,6 +12,7 @@ struct BotDashboardView: View {
 
     @State private var selectedBot: String = "weather"
     @State private var isWebViewLoading = true
+    @State private var webViewError: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,6 +54,7 @@ struct BotDashboardView: View {
                             withAnimation(.easeInOut(duration: 0.2)) {
                                 selectedBot = bot.id
                                 isWebViewLoading = true
+                                webViewError = nil
                             }
                         } label: {
                             HStack(spacing: 7) {
@@ -116,15 +118,55 @@ struct BotDashboardView: View {
 
             // WebView
             if let base = settings.baseURL {
-                let dashURL = base.appendingPathComponent("/bot/\(selectedBot)/")
-                BotWebView(
-                    url: dashURL,
-                    authHeader: settings.basicAuthHeader,
-                    onFinishLoading: {
-                        withAnimation { isWebViewLoading = false }
+                if let webError = webViewError {
+                    Spacer()
+                    VStack(spacing: 14) {
+                        EmptyState(
+                            icon: "exclamationmark.triangle",
+                            title: "Failed to Load",
+                            message: webError
+                        )
+                        Button {
+                            Haptic.tap()
+                            webViewError = nil
+                            isWebViewLoading = true
+                            let current = selectedBot
+                            selectedBot = ""
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                selectedBot = current
+                            }
+                        } label: {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.clockwise")
+                                    .font(.system(size: 12, weight: .bold))
+                                Text("Retry")
+                                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                            }
+                            .foregroundStyle(.portalBlue)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(.portalBlue.opacity(0.1))
+                            .clipShape(Capsule())
+                        }
                     }
-                )
-                .id(selectedBot)
+                    Spacer()
+                } else {
+                    let dashURL = base.appendingPathComponent("/bot/\(selectedBot)/")
+                    BotWebView(
+                        url: dashURL,
+                        authHeader: settings.basicAuthHeader,
+                        onFinishLoading: {
+                            withAnimation { isWebViewLoading = false }
+                        },
+                        onError: { errorMsg in
+                            withAnimation {
+                                isWebViewLoading = false
+                                webViewError = errorMsg
+                            }
+                        }
+                    )
+                    .id(selectedBot)
+                }
             } else {
                 Spacer()
                 EmptyState(
@@ -145,9 +187,10 @@ struct BotWebView: UIViewRepresentable {
     let url: URL
     let authHeader: String?
     var onFinishLoading: (() -> Void)? = nil
+    var onError: ((String) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onFinishLoading: onFinishLoading)
+        Coordinator(onFinishLoading: onFinishLoading, onError: onError)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -171,9 +214,11 @@ struct BotWebView: UIViewRepresentable {
 
     class Coordinator: NSObject, WKNavigationDelegate {
         let onFinishLoading: (() -> Void)?
+        let onError: ((String) -> Void)?
 
-        init(onFinishLoading: (() -> Void)?) {
+        init(onFinishLoading: (() -> Void)?, onError: ((String) -> Void)?) {
             self.onFinishLoading = onFinishLoading
+            self.onError = onError
         }
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -181,7 +226,11 @@ struct BotWebView: UIViewRepresentable {
         }
 
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            onFinishLoading?()
+            onError?(error.localizedDescription)
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            onError?(error.localizedDescription)
         }
     }
 }
