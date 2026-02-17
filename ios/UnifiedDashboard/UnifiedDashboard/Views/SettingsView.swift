@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var settings: ServerSettings
+    @EnvironmentObject var auth: AuthManager
     var isInitialSetup: Bool
 
     @State private var testResult: String?
@@ -250,6 +251,37 @@ struct SettingsView: View {
                                 .font(.system(size: 12, design: .monospaced))
                         }
                         .foregroundStyle(testSuccess ? .portalGreen : .portalRed)
+                    }
+                }
+                .cardStyle()
+
+                // Security
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionHeader(title: "SECURITY", icon: "lock.shield")
+
+                    Toggle(isOn: $auth.isEnabled) {
+                        HStack(spacing: 10) {
+                            Image(systemName: auth.biometryIcon)
+                                .font(.system(size: 18))
+                                .foregroundStyle(.portalBlue)
+                                .frame(width: 24)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Lock with \(auth.biometryLabel)")
+                                    .font(.system(size: 14, weight: .semibold, design: .monospaced))
+                                    .foregroundStyle(.textPrimary)
+                                Text("Require authentication on launch")
+                                    .font(.system(size: 11, design: .monospaced))
+                                    .foregroundStyle(.textDim)
+                            }
+                        }
+                    }
+                    .tint(.portalGreen)
+                    .onChange(of: auth.isEnabled) { _, enabled in
+                        Haptic.tap()
+                        if enabled {
+                            // Verify biometrics work before fully enabling
+                            auth.authenticate()
+                        }
                     }
                 }
                 .cardStyle()
