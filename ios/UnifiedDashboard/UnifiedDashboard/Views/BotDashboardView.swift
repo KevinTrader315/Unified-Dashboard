@@ -14,106 +14,91 @@ struct BotDashboardView: View {
     @State private var isWebViewLoading = true
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Bot selector bar
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(bots, id: \.id) { bot in
-                            let isSelected = selectedBot == bot.id
-                            Button {
-                                Haptic.tap()
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    selectedBot = bot.id
-                                    isWebViewLoading = true
-                                }
-                            } label: {
-                                HStack(spacing: 7) {
-                                    Circle()
-                                        .fill(Fmt.hexColor(bot.color))
-                                        .frame(width: 7, height: 7)
-                                    Text(bot.name)
-                                        .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                        .lineLimit(1)
-                                }
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 9)
-                                .background(
-                                    isSelected
-                                        ? Fmt.hexColor(bot.color).opacity(0.12)
-                                        : Color.clear
-                                )
-                                .foregroundStyle(isSelected ? .textPrimary : .textDim)
-                                .clipShape(Capsule())
-                                .overlay(
-                                    Capsule()
-                                        .stroke(
-                                            isSelected
-                                                ? Fmt.hexColor(bot.color).opacity(0.3)
-                                                : Color.cardBorder,
-                                            lineWidth: 1
-                                        )
-                                )
+        VStack(spacing: 0) {
+            // Drag indicator
+            Capsule()
+                .fill(Color.textDim.opacity(0.4))
+                .frame(width: 36, height: 5)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+
+            // Bot selector bar
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(bots, id: \.id) { bot in
+                        let isSelected = selectedBot == bot.id
+                        Button {
+                            Haptic.tap()
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedBot = bot.id
+                                isWebViewLoading = true
                             }
+                        } label: {
+                            HStack(spacing: 7) {
+                                Circle()
+                                    .fill(Fmt.hexColor(bot.color))
+                                    .frame(width: 7, height: 7)
+                                Text(bot.name)
+                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 9)
+                            .background(
+                                isSelected
+                                    ? Fmt.hexColor(bot.color).opacity(0.12)
+                                    : Color.clear
+                            )
+                            .foregroundStyle(isSelected ? .textPrimary : .textDim)
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(
+                                        isSelected
+                                            ? Fmt.hexColor(bot.color).opacity(0.3)
+                                            : Color.cardBorder,
+                                        lineWidth: 1
+                                    )
+                            )
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
                 }
-                .background(Color.elevatedBg)
-                .overlay(alignment: .bottom) {
-                    Color.cardBorder.frame(height: 1)
-                }
-
-                // Loading bar
-                if isWebViewLoading {
-                    ProgressView()
-                        .progressViewStyle(.linear)
-                        .tint(.portalBlue)
-                }
-
-                // WebView
-                if let base = settings.baseURL {
-                    let dashURL = base.appendingPathComponent("/bot/\(selectedBot)/")
-                    BotWebView(
-                        url: dashURL,
-                        authHeader: settings.basicAuthHeader,
-                        onFinishLoading: {
-                            withAnimation { isWebViewLoading = false }
-                        }
-                    )
-                    .id(selectedBot)
-                } else {
-                    Spacer()
-                    EmptyState(
-                        icon: "server.rack",
-                        title: "Not Connected",
-                        message: "Set your server URL in Settings"
-                    )
-                    Spacer()
-                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
             }
-            .background(Color.portalBg)
-            .navigationTitle("Dashboards")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        Haptic.tap()
-                        isWebViewLoading = true
-                        let current = selectedBot
-                        selectedBot = ""
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                            selectedBot = current
-                        }
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
-                            .font(.system(size: 14, weight: .semibold))
+            .overlay(alignment: .bottom) {
+                Color.cardBorder.frame(height: 1)
+            }
+
+            // Loading bar
+            if isWebViewLoading {
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .tint(.portalGreen)
+            }
+
+            // WebView
+            if let base = settings.baseURL {
+                let dashURL = base.appendingPathComponent("/bot/\(selectedBot)/")
+                BotWebView(
+                    url: dashURL,
+                    authHeader: settings.basicAuthHeader,
+                    onFinishLoading: {
+                        withAnimation { isWebViewLoading = false }
                     }
-                }
+                )
+                .id(selectedBot)
+            } else {
+                Spacer()
+                EmptyState(
+                    icon: "server.rack",
+                    title: "Not Connected",
+                    message: "Set your server URL in Settings"
+                )
+                Spacer()
             }
         }
+        .background(Color.portalBg)
     }
 }
 

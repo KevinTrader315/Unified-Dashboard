@@ -27,43 +27,44 @@ struct CapitalView: View {
     @State private var showTransferSheet = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 14) {
-                    if isLoading && capital == nil {
-                        LoadingCard()
-                    } else {
-                        balanceHeader
-                        accountCards
-                        actionButtons
-                        transferHistorySection
-                    }
+        ScrollView {
+            VStack(spacing: 14) {
+                // Drag indicator
+                Capsule()
+                    .fill(Color.textDim.opacity(0.4))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 8)
 
-                    if let error {
-                        HStack(spacing: 8) {
-                            Image(systemName: "wifi.exclamationmark")
-                                .foregroundStyle(.portalRed)
-                            Text(error)
-                                .font(.system(size: 12, design: .monospaced))
-                                .foregroundStyle(.portalRed)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                        .background(.portalRed.opacity(0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
+                if isLoading && capital == nil {
+                    LoadingCard()
+                } else {
+                    balanceHeader
+                    accountCards
+                    actionButtons
+                    transferHistorySection
                 }
-                .padding()
-                .animation(.easeInOut(duration: 0.3), value: capital?.totalAllocated)
+
+                if let error {
+                    HStack(spacing: 8) {
+                        Image(systemName: "wifi.exclamationmark")
+                            .foregroundStyle(.portalRed)
+                        Text(error)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(.portalRed)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(12)
+                    .background(.portalRed.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
             }
-            .background(Color.portalBg)
-            .navigationTitle("Capital")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .refreshable { await fetchAll() }
-            .sheet(isPresented: $showAllocateSheet) { allocateSheet }
-            .sheet(isPresented: $showTransferSheet) { transferSheet }
+            .padding()
+            .animation(.easeInOut(duration: 0.3), value: capital?.totalAllocated)
         }
+        .background(Color.portalBg)
+        .refreshable { await fetchAll() }
+        .sheet(isPresented: $showAllocateSheet) { allocateSheet }
+        .sheet(isPresented: $showTransferSheet) { transferSheet }
         .onAppear { startPolling() }
         .onDisappear { stopPolling() }
     }
@@ -74,17 +75,19 @@ struct CapitalView: View {
         Group {
             if let balance = capital?.realBalance {
                 GlowNumber(
-                    label: "KALSHI BALANCE",
+                    label: "Kalshi Account",
                     value: Fmt.dollars(balance),
-                    color: .portalBlue,
-                    subtitle: capital?.unallocated.map { "Unallocated: \(Fmt.dollars($0))" }
+                    color: .textPrimary,
+                    subtitle: "USD",
+                    icon: "dollarsign.circle.fill"
                 )
             } else {
                 GlowNumber(
-                    label: "TOTAL ALLOCATED",
+                    label: "Kalshi Account",
                     value: Fmt.dollars(capital?.totalAllocated ?? 0),
                     color: .textPrimary,
-                    subtitle: "\(capital?.accounts.count ?? 0) bot\((capital?.accounts.count ?? 0) == 1 ? "" : "s")"
+                    subtitle: "USD",
+                    icon: "dollarsign.circle.fill"
                 )
             }
         }

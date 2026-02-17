@@ -101,16 +101,17 @@ struct GlowNumber: View {
     let value: String
     var color: Color = .textPrimary
     var subtitle: String? = nil
+    var icon: String = "chart.line.uptrend.xyaxis"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Header row: label + chart icon
+            // Header row: label + icon
             HStack {
                 Text(label)
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.textDim)
                 Spacer()
-                Image(systemName: "chart.line.uptrend.xyaxis")
+                Image(systemName: icon)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(color)
             }
