@@ -91,6 +91,8 @@ struct StatPill: View {
                 .foregroundStyle(color)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
     }
 }
 
@@ -116,12 +118,14 @@ struct GlowNumber: View {
                     .foregroundStyle(color)
             }
 
-            // Hero number
+            // Hero number with glow
             Text(value)
                 .font(.system(size: 34, weight: .bold, design: .monospaced))
                 .foregroundStyle(color)
+                .shadow(color: color.opacity(0.3), radius: 8, x: 0, y: 2)
+                .shadow(color: color.opacity(0.1), radius: 20, x: 0, y: 4)
 
-            // Currency label
+            // Subtitle
             if let subtitle {
                 Text(subtitle)
                     .font(.system(size: 13, design: .monospaced))
@@ -136,6 +140,9 @@ struct GlowNumber: View {
             RoundedRectangle(cornerRadius: 14)
                 .stroke(Color.cardBorder, lineWidth: 1)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label): \(value)")
+        .accessibilityValue(subtitle ?? "")
     }
 }
 

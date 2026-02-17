@@ -65,6 +65,9 @@ struct BotCardView: View {
             }
         }
         .cardStyle(accent: accentColor)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(bot.name), \(bot.error != nil ? "offline" : (bot.healthy ? "healthy" : "issue"))")
+        .accessibilityValue(bot.error ?? "P&L \(Fmt.pnl(bot.pnl))")
     }
 
     private var healthBadge: some View {

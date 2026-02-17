@@ -59,5 +59,9 @@ struct CapitalCardView: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(account.label), balance \(Fmt.dollars(account.effective))")
+        .accessibilityValue("P&L \(Fmt.signedDollars(account.pnl)), \(Fmt.dollars(account.allocation)) allocated")
+        .accessibilityHint(onRemove != nil ? "Long press to remove allocation" : "")
     }
 }
