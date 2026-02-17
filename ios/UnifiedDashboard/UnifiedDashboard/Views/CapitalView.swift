@@ -105,7 +105,10 @@ struct CapitalView: View {
 
     private var accountCards: some View {
         ForEach(capital?.accounts ?? []) { account in
-            CapitalCardView(account: account) {
+            CapitalCardView(
+                account: account,
+                totalAllocated: capital?.totalAllocated ?? 0
+            ) {
                 Task { await removeAllocation(account.id) }
             }
         }
