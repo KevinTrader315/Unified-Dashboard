@@ -512,6 +512,7 @@ def claude_chat():
                 [
                     "claude", "-p",
                     "--output-format", "stream-json",
+                    "--verbose",
                     "--max-turns", str(CLAUDE_MAX_TURNS),
                     prompt,
                 ],
