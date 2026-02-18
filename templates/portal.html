@@ -468,6 +468,7 @@
       <div class="claude-input-area">
         <textarea id="claudeInput" placeholder="Ask Claude to modify code..." rows="2"></textarea>
         <button class="btn btn-primary" id="claudeSend" onclick="sendClaudeMessage()">Send</button>
+        <button class="btn" id="claudeNewChat" onclick="resetClaudeChat()" title="Start a new conversation">New Chat</button>
       </div>
     </div>
   </div>
@@ -864,6 +865,7 @@ function fetchTransferHistory() {
 // ---- Claude Code integration ----
 var claudeMessages = [];
 var claudeRunning = false;
+var claudeSessionId = null;  // Tracks the conversation session for memory
 
 function _esc(str) {
   var d = document.createElement('div');
@@ -924,7 +926,7 @@ async function sendClaudeMessage() {
     var response = await fetch('/api/claude', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({prompt: prompt})
+      body: JSON.stringify({prompt: prompt, session_id: claudeSessionId || ''})
     });
 
     if (!response.ok) {
@@ -964,6 +966,7 @@ async function sendClaudeMessage() {
             });
           } else if (evt.type === 'result') {
             if (evt.result && !textContent) textContent = evt.result;
+            if (evt.session_id) claudeSessionId = evt.session_id;
             if (evt.cost_usd !== undefined) {
               meta = {cost: evt.cost_usd, duration: evt.duration_ms};
             }
@@ -1020,6 +1023,15 @@ function _updateClaudeUI() {
   document.getElementById('claudeInput').disabled = claudeRunning;
   document.getElementById('claudeInput').placeholder =
     claudeRunning ? 'Claude is working...' : 'Ask Claude to modify code...';
+}
+
+function resetClaudeChat() {
+  claudeMessages = [];
+  claudeSessionId = null;
+  var container = document.getElementById('claudeMessages');
+  container.innerHTML = '<div class="claude-welcome"><h3>&gt;_ Claude Code</h3>'
+    + '<p>Ask Claude to read, edit, or create files in this project.</p>'
+    + '<p class="claude-examples">Try: "Show me the config" &bull; "Add logging to the overview endpoint" &bull; "Fix the proxy timeout handling"</p></div>';
 }
 
 // Enter to send (Shift+Enter for newline)

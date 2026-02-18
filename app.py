@@ -498,6 +498,7 @@ def claude_chat():
 
     data = request.get_json(force=True)
     prompt = data.get("prompt", "").strip()
+    session_id = data.get("session_id", "").strip()
     if not prompt:
         return jsonify({"error": "prompt is required"}), 400
 
@@ -508,18 +509,21 @@ def claude_chat():
     def generate():
         proc = None
         try:
+            cmd = [
+                "claude", "-p",
+                "--output-format", "stream-json",
+                "--verbose",
+                "--max-turns", str(CLAUDE_MAX_TURNS),
+                "--allowedTools",
+                "Bash(curl:*)", "Bash(git:*)",
+                "Read", "Edit", "Write", "Glob", "Grep",
+            ]
+            # Resume a previous conversation if session_id is provided
+            if session_id:
+                cmd += ["--resume", session_id]
+            cmd += ["--", prompt]
             proc = subprocess.Popen(
-                [
-                    "claude", "-p",
-                    "--output-format", "stream-json",
-                    "--verbose",
-                    "--max-turns", str(CLAUDE_MAX_TURNS),
-                    "--allowedTools",
-                    "Bash(curl:*)", "Bash(git:*)",
-                    "Read", "Edit", "Write", "Glob", "Grep",
-                    "--",
-                    prompt,
-                ],
+                cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 cwd=CLAUDE_WORK_DIR,
