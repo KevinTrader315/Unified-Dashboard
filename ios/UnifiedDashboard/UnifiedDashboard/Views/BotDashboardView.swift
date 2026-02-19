@@ -16,7 +16,7 @@ struct BotDashboardView: View {
             HStack {
                 Text("Dashboards")
                     .font(.system(size: 20, weight: .bold, design: .monospaced))
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
                 Spacer()
                 Button {
                     Haptic.tap()
@@ -24,7 +24,7 @@ struct BotDashboardView: View {
                 } label: {
                     Image(systemName: "arrow.clockwise")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.textDim)
+                        .foregroundStyle(Color.textDim)
                         .frame(width: 32, height: 32)
                         .background(Color.cardBg)
                         .clipShape(Circle())
@@ -41,7 +41,7 @@ struct BotDashboardView: View {
                     .tint(.textDim)
                 Text("Loading bots...")
                     .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(.textDim)
+                    .foregroundStyle(Color.textDim)
                     .padding(.top, 8)
                 Spacer()
             } else if bots.isEmpty {
@@ -145,10 +145,10 @@ struct BotDashboardView: View {
                                     Text("Retry")
                                         .font(.system(size: 13, weight: .bold, design: .monospaced))
                                 }
-                                .foregroundStyle(.portalBlue)
+                                .foregroundStyle(Color.portalBlue)
                                 .padding(.horizontal, 20)
                                 .padding(.vertical, 10)
-                                .background(.portalBlue.opacity(0.1))
+                                .background(Color.portalBlue.opacity(0.1))
                                 .clipShape(Capsule())
                             }
                         }

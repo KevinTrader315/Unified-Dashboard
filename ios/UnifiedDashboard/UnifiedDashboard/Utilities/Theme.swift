@@ -63,11 +63,11 @@ struct SectionHeader: View {
             if let icon {
                 Image(systemName: icon)
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.textDim)
+                    .foregroundStyle(Color.textDim)
             }
             Text(title)
                 .font(.system(size: 11, weight: .bold, design: .monospaced))
-                .foregroundStyle(.textDim)
+                .foregroundStyle(Color.textDim)
                 .tracking(1)
         }
     }
@@ -84,7 +84,7 @@ struct StatPill: View {
         VStack(alignment: .leading, spacing: 3) {
             Text(label)
                 .font(.system(size: 9, weight: .bold, design: .monospaced))
-                .foregroundStyle(.textDim)
+                .foregroundStyle(Color.textDim)
                 .tracking(0.5)
             Text(value)
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
@@ -111,7 +111,7 @@ struct GlowNumber: View {
             HStack {
                 Text(label)
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                    .foregroundStyle(.textDim)
+                    .foregroundStyle(Color.textDim)
                 Spacer()
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .medium))
@@ -129,7 +129,7 @@ struct GlowNumber: View {
             if let subtitle {
                 Text(subtitle)
                     .font(.system(size: 13, design: .monospaced))
-                    .foregroundStyle(.textDim)
+                    .foregroundStyle(Color.textDim)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,13 +189,13 @@ struct EmptyState: View {
         VStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 28))
-                .foregroundStyle(.textDim.opacity(0.5))
+                .foregroundStyle(Color.textDim.opacity(0.5))
             Text(title)
                 .font(.system(.subheadline, design: .monospaced, weight: .semibold))
-                .foregroundStyle(.textDim)
+                .foregroundStyle(Color.textDim)
             Text(message)
                 .font(.system(size: 11, design: .monospaced))
-                .foregroundStyle(.textDim.opacity(0.7))
+                .foregroundStyle(Color.textDim.opacity(0.7))
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
@@ -213,10 +213,10 @@ struct ErrorBanner: View {
         HStack(spacing: 8) {
             Image(systemName: "wifi.exclamationmark")
                 .font(.system(size: 13))
-                .foregroundStyle(.portalRed)
+                .foregroundStyle(Color.portalRed)
             Text(message)
                 .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.portalRed)
+                .foregroundStyle(Color.portalRed)
                 .lineLimit(2)
             Spacer()
             if let onRetry {
@@ -226,21 +226,21 @@ struct ErrorBanner: View {
                 } label: {
                     Text("Retry")
                         .font(.system(size: 11, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.portalRed)
+                        .foregroundStyle(Color.portalRed)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(.portalRed.opacity(0.12))
+                        .background(Color.portalRed.opacity(0.12))
                         .clipShape(Capsule())
                 }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(.portalRed.opacity(0.08))
+        .background(Color.portalRed.opacity(0.08))
         .clipShape(RoundedRectangle(cornerRadius: 10))
         .overlay(
             RoundedRectangle(cornerRadius: 10)
-                .stroke(.portalRed.opacity(0.15), lineWidth: 1)
+                .stroke(Color.portalRed.opacity(0.15), lineWidth: 1)
         )
     }
 }

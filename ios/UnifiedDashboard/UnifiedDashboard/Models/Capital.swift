@@ -32,10 +32,9 @@ struct TransfersResponse: Codable {
 }
 
 struct Transfer: Codable, Identifiable {
-    /// Unique ID combining all fields + a UUID suffix to prevent collisions
+    /// Stored unique ID combining all fields + a UUID suffix to prevent collisions
     /// on same-second, same-amount transfers between the same accounts.
-    let _uuid: String = UUID().uuidString
-    var id: String { "\(from)-\(to)-\(ts)-\(amount)-\(_uuid.prefix(8))" }
+    let id: String
 
     let from: String
     let to: String
@@ -44,6 +43,16 @@ struct Transfer: Codable, Identifiable {
 
     enum CodingKeys: String, CodingKey {
         case from, to, amount, ts
+    }
+
+    init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.from   = try container.decode(String.self, forKey: .from)
+        self.to     = try container.decode(String.self, forKey: .to)
+        self.amount = try container.decode(Int.self,    forKey: .amount)
+        self.ts     = try container.decode(String.self, forKey: .ts)
+        let suffix  = UUID().uuidString.prefix(8)
+        self.id     = "\(self.from)-\(self.to)-\(self.ts)-\(self.amount)-\(suffix)"
     }
 }
 

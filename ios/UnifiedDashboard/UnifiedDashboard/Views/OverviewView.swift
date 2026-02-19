@@ -16,12 +16,12 @@ struct OverviewView: View {
                 HStack {
                     Text("Portfolio")
                         .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
                     Spacer()
                     if let lastUpdated {
                         Text(lastUpdated, style: .relative)
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(.textDim)
+                            .foregroundStyle(Color.textDim)
                     }
                 }
                 .padding(.top, 4)
@@ -44,9 +44,7 @@ struct OverviewView: View {
                     // Bot cards
                     let sortedBots = overview.bots.sorted(by: { $0.key < $1.key })
                     ForEach(Array(sortedBots.enumerated()), id: \.element.key) { index, pair in
-                        var mutBot = pair.value
-                        mutBot.id = pair.key
-                        BotCardView(botId: pair.key, bot: mutBot)
+                        BotCardView(botId: pair.key, bot: pair.value)
                             .offset(y: cardsAppeared ? 0 : CGFloat(16 + index * 4))
                             .opacity(cardsAppeared ? 1 : 0)
                     }

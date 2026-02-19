@@ -12,7 +12,7 @@ struct BotCardView: View {
             HStack(alignment: .top) {
                 Text(bot.name)
                     .font(.system(.subheadline, design: .monospaced, weight: .bold))
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
                 Spacer()
                 healthBadge
             }
@@ -24,10 +24,10 @@ struct BotCardView: View {
                     Text(error)
                         .font(.system(size: 12, design: .monospaced))
                 }
-                .foregroundStyle(.portalRed.opacity(0.8))
+                .foregroundStyle(Color.portalRed.opacity(0.8))
                 .padding(10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(.portalRed.opacity(0.06))
+                .background(Color.portalRed.opacity(0.06))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
             } else {
                 // Hero P&L

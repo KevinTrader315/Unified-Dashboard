@@ -13,12 +13,12 @@ struct CapitalCardView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(account.label)
                     .font(.system(.subheadline, design: .monospaced, weight: .bold))
-                    .foregroundStyle(.textPrimary)
+                    .foregroundStyle(Color.textPrimary)
                 Spacer()
                 HStack(spacing: 4) {
                     Text("P&L")
                         .font(.system(size: 10, weight: .medium, design: .monospaced))
-                        .foregroundStyle(.textDim)
+                        .foregroundStyle(Color.textDim)
                     Text(Fmt.signedDollars(account.pnl))
                         .font(.system(size: 13, weight: .semibold, design: .monospaced))
                         .foregroundStyle(Fmt.pnlColorCents(account.pnl))
@@ -28,12 +28,12 @@ struct CapitalCardView: View {
             // Effective balance (hero)
             Text(Fmt.dollars(account.effective))
                 .font(.system(size: 24, weight: .bold, design: .monospaced))
-                .foregroundStyle(.textPrimary)
+                .foregroundStyle(Color.textPrimary)
 
             // Allocation subtitle
             Text("\(Fmt.dollars(account.allocation)) allocated")
                 .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.textDim)
+                .foregroundStyle(Color.textDim)
 
             // Progress bar — fraction of total capital this bot uses
             GeometryReader { geo in

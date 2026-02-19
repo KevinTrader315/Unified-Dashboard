@@ -41,16 +41,16 @@ struct SettingsView: View {
                             .frame(width: 100, height: 100)
                         Image(systemName: "antenna.radiowaves.left.and.right")
                             .font(.system(size: 36, weight: .medium))
-                            .foregroundStyle(.portalBlue)
+                            .foregroundStyle(Color.portalBlue)
                     }
 
                     Text("Connect to Portal")
                         .font(.system(.title2, design: .monospaced, weight: .bold))
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
 
                     Text("Enter your Unified Dashboard server URL\nto start monitoring your trading bots.")
                         .font(.system(size: 13, design: .monospaced))
-                        .foregroundStyle(.textDim)
+                        .foregroundStyle(Color.textDim)
                         .multilineTextAlignment(.center)
                         .lineSpacing(3)
                 }
@@ -81,7 +81,7 @@ struct SettingsView: View {
                         Text("Insecure connection — credentials sent in plaintext over HTTP")
                             .font(.system(size: 11, design: .monospaced))
                     }
-                    .foregroundStyle(.portalRed)
+                    .foregroundStyle(Color.portalRed)
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.portalRed.opacity(0.08))
@@ -93,7 +93,7 @@ struct SettingsView: View {
                     SectionHeader(title: "AUTHENTICATION", icon: "lock")
                     Text("Optional — only if your portal uses Basic Auth")
                         .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.textDim.opacity(0.6))
+                        .foregroundStyle(Color.textDim.opacity(0.6))
 
                     HStack(spacing: 10) {
                         TextField("Username", text: $settings.username)
@@ -143,7 +143,7 @@ struct SettingsView: View {
                             startPoint: .top, endPoint: .bottom
                         )
                     )
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .disabled(!settings.isConfigured || isTesting)
@@ -155,10 +155,10 @@ struct SettingsView: View {
                         Text(result)
                             .font(.system(size: 12, design: .monospaced))
                     }
-                    .foregroundStyle(testSuccess ? .portalGreen : .portalRed)
+                    .foregroundStyle(testSuccess ? Color.portalGreen : Color.portalRed)
                     .frame(maxWidth: .infinity)
                     .padding(12)
-                    .background((testSuccess ? Color.portalGreen : .portalRed).opacity(0.08))
+                    .background((testSuccess ? Color.portalGreen : Color.portalRed).opacity(0.08))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
 
@@ -182,7 +182,7 @@ struct SettingsView: View {
                 HStack {
                     Text("Settings")
                         .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
                     Spacer()
                 }
                 .padding(.top, 4)
@@ -214,7 +214,7 @@ struct SettingsView: View {
                         Text("Insecure — credentials sent in plaintext over HTTP")
                             .font(.system(size: 11, design: .monospaced))
                     }
-                    .foregroundStyle(.portalRed)
+                    .foregroundStyle(Color.portalRed)
                     .padding(10)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.portalRed.opacity(0.08))
@@ -266,8 +266,8 @@ struct SettingsView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
-                        .background(.portalBlue)
-                        .foregroundStyle(.white)
+                        .background(Color.portalBlue)
+                        .foregroundStyle(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                     .disabled(!settings.isConfigured || isTesting)
@@ -280,7 +280,7 @@ struct SettingsView: View {
                             Text(result)
                                 .font(.system(size: 12, design: .monospaced))
                         }
-                        .foregroundStyle(testSuccess ? .portalGreen : .portalRed)
+                        .foregroundStyle(testSuccess ? Color.portalGreen : Color.portalRed)
                     }
                 }
                 .cardStyle()
@@ -293,15 +293,15 @@ struct SettingsView: View {
                         HStack(spacing: 10) {
                             Image(systemName: auth.biometryIcon)
                                 .font(.system(size: 18))
-                                .foregroundStyle(.portalBlue)
+                                .foregroundStyle(Color.portalBlue)
                                 .frame(width: 24)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Lock with \(auth.biometryLabel)")
                                     .font(.system(size: 14, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(.textPrimary)
+                                    .foregroundStyle(Color.textPrimary)
                                 Text("Require authentication on launch")
                                     .font(.system(size: 11, design: .monospaced))
-                                    .foregroundStyle(.textDim)
+                                    .foregroundStyle(Color.textDim)
                             }
                         }
                     }
@@ -323,46 +323,46 @@ struct SettingsView: View {
                     HStack {
                         Text("App")
                             .font(.system(size: 13, design: .monospaced))
-                            .foregroundStyle(.textDim)
+                            .foregroundStyle(Color.textDim)
                         Spacer()
                         Text("Unified Dashboard")
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.textPrimary)
+                            .foregroundStyle(Color.textPrimary)
                     }
                     Divider().overlay(Color.cardBorder)
                     HStack {
                         Text("Version")
                             .font(.system(size: 13, design: .monospaced))
-                            .foregroundStyle(.textDim)
+                            .foregroundStyle(Color.textDim)
                         Spacer()
                         Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
                             .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                            .foregroundStyle(.textPrimary)
+                            .foregroundStyle(Color.textPrimary)
                     }
                     Divider().overlay(Color.cardBorder)
                     HStack {
                         Text("Status")
                             .font(.system(size: 13, design: .monospaced))
-                            .foregroundStyle(.textDim)
+                            .foregroundStyle(Color.textDim)
                         Spacer()
                         HStack(spacing: 5) {
                             Circle()
-                                .fill(settings.isConfigured ? .portalGreen : .portalRed)
+                                .fill(settings.isConfigured ? Color.portalGreen : Color.portalRed)
                                 .frame(width: 6, height: 6)
                             Text(settings.isConfigured ? "Configured" : "Not Set")
                                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                                .foregroundStyle(settings.isConfigured ? .portalGreen : .portalRed)
+                                .foregroundStyle(settings.isConfigured ? Color.portalGreen : Color.portalRed)
                         }
                     }
                     Divider().overlay(Color.cardBorder)
                     HStack {
                         Text("Server")
                             .font(.system(size: 13, design: .monospaced))
-                            .foregroundStyle(.textDim)
+                            .foregroundStyle(Color.textDim)
                         Spacer()
                         Text(settings.serverURL.isEmpty ? "—" : settings.serverURL)
                             .font(.system(size: 12, design: .monospaced))
-                            .foregroundStyle(.textDim)
+                            .foregroundStyle(Color.textDim)
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }

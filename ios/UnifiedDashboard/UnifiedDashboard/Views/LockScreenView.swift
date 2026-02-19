@@ -25,18 +25,18 @@ struct LockScreenView: View {
 
                     Image(systemName: auth.biometryIcon)
                         .font(.system(size: 44, weight: .medium))
-                        .foregroundStyle(.portalBlue)
+                        .foregroundStyle(Color.portalBlue)
                         .shadow(color: .portalBlue.opacity(0.3), radius: 10, x: 0, y: 4)
                 }
 
                 VStack(spacing: 8) {
                     Text("Locked")
                         .font(.system(size: 22, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
 
                     Text("Authenticate to access\nyour trading dashboard")
                         .font(.system(size: 13, design: .monospaced))
-                        .foregroundStyle(.textDim)
+                        .foregroundStyle(Color.textDim)
                         .multilineTextAlignment(.center)
                         .lineSpacing(3)
                 }
@@ -62,7 +62,7 @@ struct LockScreenView: View {
                             startPoint: .top, endPoint: .bottom
                         )
                     )
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.white)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
                 .padding(.horizontal, 24)

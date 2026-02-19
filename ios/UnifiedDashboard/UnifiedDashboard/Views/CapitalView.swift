@@ -38,12 +38,12 @@ struct CapitalView: View {
                 HStack {
                     Text("Capital")
                         .font(.system(size: 20, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.textPrimary)
+                        .foregroundStyle(Color.textPrimary)
                     Spacer()
                     if let lastUpdated {
                         Text(lastUpdated, style: .relative)
                             .font(.system(size: 10, design: .monospaced))
-                            .foregroundStyle(.textDim)
+                            .foregroundStyle(Color.textDim)
                     }
                 }
                 .padding(.top, 4)
@@ -69,7 +69,7 @@ struct CapitalView: View {
                             Spacer()
                             Text("\(accounts.count) bot\(accounts.count == 1 ? "" : "s")")
                                 .font(.system(size: 11, design: .monospaced))
-                                .foregroundStyle(.textDim)
+                                .foregroundStyle(Color.textDim)
                         }
                         .padding(.horizontal, 4)
                         .offset(y: cardsAppeared ? 0 : 12)
@@ -198,7 +198,7 @@ struct CapitalView: View {
                         startPoint: .top, endPoint: .bottom
                     )
                 )
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
 
@@ -220,7 +220,7 @@ struct CapitalView: View {
                         startPoint: .top, endPoint: .bottom
                     )
                 )
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.white)
                 .clipShape(RoundedRectangle(cornerRadius: 10))
             }
         }
@@ -240,10 +240,10 @@ struct CapitalView: View {
                 if transfers.count > 3 {
                     Text("\(transfers.count)")
                         .font(.system(size: 10, weight: .bold, design: .monospaced))
-                        .foregroundStyle(.portalBlue)
+                        .foregroundStyle(Color.portalBlue)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(.portalBlue.opacity(0.1))
+                        .background(Color.portalBlue.opacity(0.1))
                         .clipShape(Capsule())
                 }
             }
@@ -255,66 +255,26 @@ struct CapitalView: View {
                     message: "Transfers between accounts will appear here"
                 )
             } else {
-                ForEach(visibleTransfers) { t in
-                    let isToPool = t.to == "unallocated"
-                    HStack(spacing: 10) {
-                        Image(systemName: isToPool ? "arrow.down.left" : "arrow.up.right")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(isToPool ? .portalGreen.opacity(0.7) : .portalBlue.opacity(0.7))
-                            .frame(width: 22, height: 22)
-                            .background(
-                                (isToPool ? Color.portalGreen : .portalBlue).opacity(0.08)
-                            )
-                            .clipShape(Circle())
+                TransferListView(transfers: visibleTransfers)
+            }
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            HStack(spacing: 4) {
-                                Text(displayName(t.from))
-                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(.textPrimary)
-                                Image(systemName: "chevron.right")
-                                    .font(.system(size: 8, weight: .bold))
-                                    .foregroundStyle(.textDim)
-                                Text(displayName(t.to))
-                                    .font(.system(size: 12, weight: .semibold, design: .monospaced))
-                                    .foregroundStyle(.textPrimary)
-                            }
-                            Text(Fmt.timestamp(t.ts))
-                                .font(.system(size: 10, design: .monospaced))
-                                .foregroundStyle(.textDim)
-                        }
-
-                        Spacer()
-
-                        Text(Fmt.dollars(t.amount))
-                            .font(.system(size: 13, weight: .bold, design: .monospaced))
-                            .foregroundStyle(isToPool ? .portalGreen : .textPrimary)
+            // Show All / Show Less toggle
+            if transfers.count > 3 {
+                Button {
+                    Haptic.tap()
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        showAllTransfers.toggle()
                     }
-                    .padding(.vertical, 6)
-
-                    if t.id != visibleTransfers.last?.id {
-                        Divider().overlay(Color.cardBorder)
+                } label: {
+                    HStack(spacing: 5) {
+                        Text(showAllTransfers ? "Show Less" : "Show All \(transfers.count)")
+                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        Image(systemName: showAllTransfers ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 9, weight: .bold))
                     }
-                }
-
-                // Show All / Show Less toggle
-                if transfers.count > 3 {
-                    Button {
-                        Haptic.tap()
-                        withAnimation(.easeInOut(duration: 0.25)) {
-                            showAllTransfers.toggle()
-                        }
-                    } label: {
-                        HStack(spacing: 5) {
-                            Text(showAllTransfers ? "Show Less" : "Show All \(transfers.count)")
-                                .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                            Image(systemName: showAllTransfers ? "chevron.up" : "chevron.down")
-                                .font(.system(size: 9, weight: .bold))
-                        }
-                        .foregroundStyle(.portalBlue)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                    }
+                    .foregroundStyle(Color.portalBlue)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
                 }
             }
         }
@@ -333,31 +293,31 @@ struct CapitalView: View {
                     TextField("Label (e.g. BTC Range)", text: $allocLabel)
                 } header: {
                     Text("Bot")
-                        .foregroundStyle(.textDim)
+                        .foregroundStyle(Color.textDim)
                 }
                 .listRowBackground(Color.elevatedBg)
 
                 Section {
                     HStack {
                         Text("$")
-                            .foregroundStyle(.textDim)
+                            .foregroundStyle(Color.textDim)
                         TextField("0.00", text: $allocAmount)
                             .keyboardType(.decimalPad)
                     }
                 } header: {
                     Text("Amount")
-                        .foregroundStyle(.textDim)
+                        .foregroundStyle(Color.textDim)
                 }
                 .listRowBackground(Color.elevatedBg)
 
                 if !allocFeedback.isEmpty {
                     Section {
                         Label(allocFeedback, systemImage: allocIsError ? "xmark.circle" : "checkmark.circle")
-                            .foregroundStyle(allocIsError ? .portalRed : .portalGreen)
+                            .foregroundStyle(allocIsError ? Color.portalRed : Color.portalGreen)
                             .font(.system(.caption, design: .monospaced))
                     }
                     .listRowBackground(
-                        (allocIsError ? Color.portalRed : .portalGreen).opacity(0.08)
+                        (allocIsError ? Color.portalRed : Color.portalGreen).opacity(0.08)
                     )
                 }
 
@@ -372,7 +332,7 @@ struct CapitalView: View {
                             Text(isAllocating ? "Allocating..." : "Allocate Capital")
                                 .frame(maxWidth: .infinity)
                                 .font(.system(.headline, design: .monospaced))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Color.white)
                         }
                     }
                     .disabled(allocBotId.isEmpty || allocLabel.isEmpty || allocAmount.isEmpty || isAllocating)
@@ -385,7 +345,7 @@ struct CapitalView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.portalBg)
-            .foregroundStyle(.textPrimary)
+            .foregroundStyle(Color.textPrimary)
             .navigationTitle("Allocate Capital")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -412,7 +372,7 @@ struct CapitalView: View {
                     }
                 } header: {
                     Text("From")
-                        .foregroundStyle(.textDim)
+                        .foregroundStyle(Color.textDim)
                 }
                 .listRowBackground(Color.elevatedBg)
 
@@ -425,31 +385,31 @@ struct CapitalView: View {
                     }
                 } header: {
                     Text("To")
-                        .foregroundStyle(.textDim)
+                        .foregroundStyle(Color.textDim)
                 }
                 .listRowBackground(Color.elevatedBg)
 
                 Section {
                     HStack {
                         Text("$")
-                            .foregroundStyle(.textDim)
+                            .foregroundStyle(Color.textDim)
                         TextField("0.00", text: $xferAmount)
                             .keyboardType(.decimalPad)
                     }
                 } header: {
                     Text("Amount")
-                        .foregroundStyle(.textDim)
+                        .foregroundStyle(Color.textDim)
                 }
                 .listRowBackground(Color.elevatedBg)
 
                 if !xferFeedback.isEmpty {
                     Section {
                         Label(xferFeedback, systemImage: xferIsError ? "xmark.circle" : "checkmark.circle")
-                            .foregroundStyle(xferIsError ? .portalRed : .portalGreen)
+                            .foregroundStyle(xferIsError ? Color.portalRed : Color.portalGreen)
                             .font(.system(.caption, design: .monospaced))
                     }
                     .listRowBackground(
-                        (xferIsError ? Color.portalRed : .portalGreen).opacity(0.08)
+                        (xferIsError ? Color.portalRed : Color.portalGreen).opacity(0.08)
                     )
                 }
 
@@ -464,7 +424,7 @@ struct CapitalView: View {
                             Text(isTransferring ? "Transferring..." : "Transfer Funds")
                                 .frame(maxWidth: .infinity)
                                 .font(.system(.headline, design: .monospaced))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(Color.white)
                         }
                     }
                     .disabled(xferFrom == xferTo || xferAmount.isEmpty || isTransferring)
@@ -477,7 +437,7 @@ struct CapitalView: View {
             }
             .scrollContentBackground(.hidden)
             .background(Color.portalBg)
-            .foregroundStyle(.textPrimary)
+            .foregroundStyle(Color.textPrimary)
             .navigationTitle("Transfer Funds")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
@@ -628,5 +588,59 @@ struct CapitalView: View {
                 self.isLoading = false
             }
         }
+    }
+}
+
+// MARK: - Transfer List Helper View
+struct TransferListView: View {
+    let transfers: [Transfer]
+
+    var body: some View {
+        ForEach(transfers, id: \.id) { t in
+            let isToPool = t.to == "unallocated"
+            HStack(spacing: 10) {
+                Image(systemName: isToPool ? "arrow.down.left" : "arrow.up.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(isToPool ? Color.portalGreen.opacity(0.7) : Color.portalBlue.opacity(0.7))
+                    .frame(width: 22, height: 22)
+                    .background(
+                        (isToPool ? Color.portalGreen : Color.portalBlue).opacity(0.08)
+                    )
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 4) {
+                        Text(displayName(t.from))
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(Color.textPrimary)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(Color.textDim)
+                        Text(displayName(t.to))
+                            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                            .foregroundStyle(Color.textPrimary)
+                    }
+                    Text(Fmt.timestamp(t.ts))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(Color.textDim)
+                }
+
+                Spacer()
+
+                Text(Fmt.dollars(t.amount))
+                    .font(.system(size: 13, weight: .bold, design: .monospaced))
+                    .foregroundStyle(isToPool ? Color.portalGreen : Color.textPrimary)
+            }
+            .padding(.vertical, 6)
+
+            if t.id != transfers.last?.id {
+                Divider().overlay(Color.cardBorder)
+            }
+        }
+    }
+
+    private func displayName(_ id: String) -> String {
+        if id == "unallocated" { return "Pool" }
+        return id
     }
 }

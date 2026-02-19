@@ -18,7 +18,24 @@ class ServerSettings: ObservableObject {
     }
 
     var baseURL: URL? {
-        URL(string: serverURL.hasSuffix("/") ? String(serverURL.dropLast()) : serverURL)
+        var url = serverURL
+        // Remove trailing slash
+        if url.hasSuffix("/") {
+            url = String(url.dropLast())
+        }
+
+        let lowercased = url.lowercased()
+        let isLocal = lowercased.contains("localhost") || lowercased.contains("127.0.0.1") || lowercased.contains("192.168.")
+
+        // Allow HTTP for localhost and local networks only; force HTTPS for remote
+        if lowercased.hasPrefix("http://") {
+            if !isLocal {
+                url = "https://" + String(url.dropFirst(7))
+            }
+        } else if !lowercased.hasPrefix("https://") {
+            url = "https://" + url
+        }
+        return URL(string: url)
     }
 
     var isConfigured: Bool {
