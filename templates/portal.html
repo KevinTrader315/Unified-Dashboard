@@ -652,7 +652,7 @@ document.getElementById('tabBar').addEventListener('click', function(e) {
   if (target !== 'overview' && target !== 'capital' && target !== 'claude' && target !== 'rules' && target !== 'system' && !loadedIframes[target]) {
     loadIframe(target);
   }
-  if (target === 'rules') loadRules();
+  if (target === 'rules') loadRules();  // always re-fetch — no cache
   if (target === 'system') loadSystem();
 });
 
@@ -1236,13 +1236,10 @@ document.getElementById('claudeInput').addEventListener('keydown', function(e) {
 // ============================================================
 const SPORT_LABELS = {nba:'NBA', soccer:'Soccer', mlb:'MLB', nfl:'NFL', nhl:'NHL'};
 const SPORT_COLORS = {nba:'#58a6ff', soccer:'#50c878', mlb:'#f7931a', nfl:'#8b5cf6', nhl:'#06b6d4'};
-let _rulesLoaded = false;
 
 async function loadRules() {
-  if (_rulesLoaded) return;
-  _rulesLoaded = true;
-
   const el = document.getElementById('rulesContent');
+  el.innerHTML = '<div style="color:var(--text-dim);text-align:center;padding:3rem">Loading rules…</div>';
 
   // Fetch sports config + BTC Range config + BTC Momentum config + bounce-back status in parallel
   const [sportsRes, btcRes, momRes, bbRes] = await Promise.allSettled([
@@ -1448,7 +1445,35 @@ function btcSection(title) {
   return `<div class="rules-subhead">${title}</div>`;
 }
 
+function btcInput(botId, field, val, type='number', step='1', min='', max='', label='') {
+  const id = `btci-${botId}-${field}`;
+  return `<div class="btc-field-row">
+    <span class="btc-field-label">${label||field}</span>
+    <span style="display:flex;align-items:center;gap:.3rem">
+      <input id="${id}" type="${type}" step="${step}" ${min?'min='+min:''} ${max?'max='+max:''} value="${val}"
+        style="width:4rem;background:#0d1117;border:1px solid #30363d;border-radius:4px;
+               color:#e6edf3;font-family:monospace;font-size:.78rem;padding:1px 4px;text-align:center">
+      <button onclick="saveBtcField('${botId}','${field}',document.getElementById('${id}').value,'${type}')"
+        style="padding:1px 7px;border-radius:4px;cursor:pointer;font-family:monospace;font-size:.7rem;
+               border:1px solid #30363d;background:#161b22;color:#58a6ff">✓</button>
+    </span>
+  </div>`;
+}
+
+function btcToggle(botId, field, val, label, desc) {
+  const id = `btct-${botId}-${field}`;
+  return `<div class="btc-field-row" title="${desc}">
+    <span class="btc-field-label">${label} <span style="color:#555;font-size:.6rem">ⓘ</span></span>
+    <label class="toggle-switch">
+      <input id="${id}" type="checkbox" ${val?'checked':''} onchange="saveBtcField('${botId}','${field}',this.checked,'bool')">
+      <span class="toggle-slider"></span>
+    </label>
+  </div>`;
+}
+
 function renderBtcCard(name, color, cfg, isMomentum) {
+  const botId = isMomentum ? 'btc-momentum' : 'btc-range';
+  const fbId  = `fb-${botId}`;
   if (!cfg) {
     return `<div class="rules-card" style="border-top:3px solid ${color}">
       <div class="rules-card-header"><span class="rules-card-title">${name}</span></div>
@@ -1466,76 +1491,59 @@ function renderBtcCard(name, color, cfg, isMomentum) {
   };
   const sz = cfg.asset_sizes || {};
   const ex = cfg.smart_exit_tiers || [];
+  const ssm = cfg.streak_sizing_multipliers || {};
 
   const tierBadges = tierOrder.map(t =>
     `<span class="tier-badge ${tiers[t]?'tier-on':'tier-off'}" title="${tierDesc[t]||''}">${t}</span>`
   ).join('');
+
+  // Streak sizing summary
+  const ssmKeys = Object.keys(ssm).map(Number).sort((a,b)=>a-b);
+  const cap = ssmKeys.length ? ssm[ssmKeys[ssmKeys.length-1]] : 1;
+  const ssmStr = ssmKeys.map(k=>`S=${k}→${ssm[k]}×`).join(', ') + (ssmKeys.length ? `, S=${ssmKeys[ssmKeys.length-1]+1}+→${cap}× (cap)` : '');
 
   return `<div class="rules-card" style="border-top:3px solid ${color}">
     <div class="rules-card-header">
       <span class="rules-card-title">${name}</span>
       <span class="sub-card-badge">${(cfg.mode||'?').toUpperCase()}</span>
     </div>
+    <div style="font-size:.65rem;color:var(--text-dim);margin-bottom:.5rem">Changes save instantly to the live bot. <span class="rules-feedback" id="${fbId}"></span></div>
 
     ${btcSection('📊 Signal Filter — When to look for a trade')}
-    ${btcRow('Streak Threshold', `≥ ${cfg.streak_threshold ?? '?'} consecutive same-direction 15-min windows`,
-      'Bot only considers entering if the last N candles all closed in the same direction (all YES or all NO). Lower = more trades but weaker edge. Raised from 3→4 after backtesting showed S=1-3 is near coin-flip.')}
-    ${btcRow('Signal Scorer', cfg.use_scorer ? '✓ Enabled' : '✗ Disabled',
-      'Multi-factor scoring system that rates the setup quality. Uses time-of-day bias, cross-asset correlation, Bollinger Bands, displacement, liquidity sweeps, and 5m microstructure to assign a tier (SNIPER/STANDARD/VOLUME/SKIP).')}
-    ${btcRow('Stacking Signals', cfg.use_stacking ? '✓ Enabled' : '✗ Disabled',
-      'Boost or kill a trade based on stacked confirmation signals: time-of-day historical bias, cross-asset agreement (BTC+ETH+SOL), Bollinger Band squeeze, displacement candle, order block sweep. More stacked signals = higher tier.')}
-    ${btcRow('Candle Signals', cfg.use_candle_signals ? '✓ Enabled' : '✗ Disabled',
-      '1-minute intra-window candle analysis for extra entry confirmation. Looks for 5m direction, 3-bar momentum blocks, order flow imbalance (OFI), and pullback setups.')}
-    ${btcRow('Candle Max Entry', `≤ ${((cfg.candle_max_entry||0)*100).toFixed(0)}¢`,
-      'Candle signal entries are only taken if the contract is priced at or below this level. Prevents buying overpriced contracts even with a good candle signal.')}
-    ${btcRow('Candle Min Confidence', `≥ ${((cfg.candle_min_confidence||0)*100).toFixed(0)}%`,
-      'Minimum ML model confidence score required to act on a candle signal. Below this threshold the signal is ignored.')}
-    ${btcRow('Active Tiers', `<span style="line-height:2">${tierBadges}</span>`,
-      'Which signal quality tiers are allowed to trade. Hover each badge for details. Disabled tiers (MICRO/NANO) are skipped even if the signal fires.')}
+    ${!isMomentum ? btcInput(botId,'streak_threshold',cfg.streak_threshold??4,'number','1','1','10','Streak Threshold') : btcRow('Streak Threshold', `≥ ${cfg.streak_threshold ?? '?'}`,'')}
+    ${btcToggle(botId,'use_scorer',cfg.use_scorer,'Signal Scorer','Multi-factor scoring: ToD bias, cross-asset, BB, displacement, sweeps → SNIPER/STANDARD/VOLUME/SKIP.')}
+    ${btcToggle(botId,'use_stacking',cfg.use_stacking,'Stacking Signals','Boost or kill trades based on stacked confirmation signals.')}
+    ${btcToggle(botId,'use_candle_signals',cfg.use_candle_signals,'Candle Signals','1-min intra-window candle analysis for extra entry confirmation.')}
+    ${btcRow('Candle Max Entry', `≤ ${((cfg.candle_max_entry||0)*100).toFixed(0)}¢`,'')}
+    ${btcRow('Candle Min Confidence', `≥ ${((cfg.candle_min_confidence||0)*100).toFixed(0)}%`,'')}
+    ${btcRow('Active Tiers', `<span style="line-height:2">${tierBadges}</span>`,'')}
 
     ${btcSection('📐 Position Sizing — How much to trade')}
-    ${btcRow('Base Contracts', `${cfg.base_contracts ?? '?'} contracts`,
-      'The standard position size for a STANDARD-tier signal. Other tiers scale off this: SNIPER = 3×, VOLUME = 0.5×.')}
-    ${btcRow('Asset Multipliers', Object.entries(sz).map(([a,v])=>`${a.toUpperCase()} ×${v}`).join(' &nbsp;|&nbsp;') || '—',
-      'Per-asset scaling applied on top of the tier size. BTC gets full size (×1.0), ETH and SOL are half-sized (×0.5) due to lower liquidity.')}
-    ${btcRow('Max Open Positions', `${cfg.max_open_positions ?? '?'} across all assets`,
-      'Hard cap on total simultaneous open positions. Prevents over-exposure if many signals fire at once.')}
+    ${!isMomentum ? btcInput(botId,'base_contracts',cfg.base_contracts??10,'number','1','1','200','Base Contracts') : btcRow('Base Contracts',`${cfg.base_contracts??'?'} contracts`,'')}
+    ${btcRow('Asset Multipliers', Object.entries(sz).map(([a,v])=>`${a.toUpperCase()} ×${v}`).join(' &nbsp;|&nbsp;') || '—','')}
+    ${!isMomentum ? btcInput(botId,'max_open_positions',cfg.max_open_positions??5,'number','1','1','20','Max Open Positions') : btcRow('Max Open Positions',`${cfg.max_open_positions??'?'}`,'')}
+
+    ${btcSection('📈 High-Streak Sizing Boost')}
+    ${btcToggle(botId,'use_streak_sizing',cfg.use_streak_sizing??false,'Streak Boost Enabled','Scale up position size when streak is extended (S=6+). Captures stronger mean-reversion edge at high streaks.')}
+    ${btcRow('Multipliers', cfg.use_streak_sizing!==false ? ssmStr : '—', 'S=6→1.5× base size, S=7+→2.0× base size (hard cap). Applied on top of tier sizing.')}
 
     ${btcSection('🎯 Entry Execution — How to get filled')}
-    ${btcRow('Target Entry Price', `~${((cfg.entry_price||0)*100).toFixed(0)}¢`,
-      'The ideal contract price to buy at. The patience and ladder systems work around this target to try to get a better fill.')}
-    ${btcRow('Patience Entry', cfg.use_patience ? '✓ Enabled' : '✗ Disabled',
-      'Instead of hitting the ask immediately, the bot waits up to patience_max_secs for the price to improve before submitting the order. Avoids paying the spread on fast moves.')}
-    ${btcRow('Patience Window', `${cfg.patience_base_secs ?? '?'}s base / ${cfg.patience_max_secs ?? '?'}s max`,
-      'How long to wait for a better price. The bot starts with the base window and extends up to the max if price hasn\'t improved enough.')}
-    ${btcRow('Min Price Improvement', `${((cfg.min_improvement||0)*100).toFixed(0)}¢ to trigger patience`,
-      'The bid must be at least this much below the current ask before patience kicks in. If the spread is already tight, skip patience and buy immediately.')}
-    ${btcRow('Great Price Threshold', `${((cfg.great_price_improvement||0)*100).toFixed(0)}¢ improvement`,
-      'If the price improves by this much during the patience window, the bot buys immediately rather than waiting the full window.')}
-    ${btcRow('Ladder Orders', cfg.use_ladder ? '✓ Enabled' : '✗ Disabled',
-      'Instead of one order, splits the position into multiple limit orders at different price levels. Improves average fill price on illiquid contracts.')}
-    ${btcRow('Ladder Levels', `${cfg.ladder_levels ?? '?'} orders`,
-      'How many price levels to split the order across. E.g. 3 levels = 3 separate limit orders.')}
-    ${btcRow('Ladder Spread', `${((cfg.ladder_spread||0)*100).toFixed(0)}¢ between levels`,
-      'Price gap between each ladder level. E.g. spread=3¢ with 3 levels → orders at target, target-3¢, target-6¢.')}
+    ${btcRow('Target Entry Price', `~${((cfg.entry_price||0)*100).toFixed(0)}¢`,'')}
+    ${btcToggle(botId,'use_patience',cfg.use_patience,'Patience Entry','Wait up to patience_max_secs for price to improve before submitting.')}
+    ${btcRow('Patience Window', `${cfg.patience_base_secs??'?'}s base / ${cfg.patience_max_secs??'?'}s max`,'')}
+    ${btcToggle(botId,'use_ladder',cfg.use_ladder,'Ladder Orders','Split position into multiple limit orders at different price levels.')}
+    ${btcRow('Ladder Levels', `${cfg.ladder_levels??'?'} orders`,'')}
+    ${btcRow('Ladder Spread', `${((cfg.ladder_spread||0)*100).toFixed(0)}¢ between levels`,'')}
 
     ${btcSection('🔒 Lock Structure — Reducing downside')}
-    ${btcRow('Lock Trade', cfg.use_lock ? '✓ Enabled' : '✗ Disabled',
-      'When the main position is profitable, the bot buys the opposite side at a very low price (lock_target). This creates an asymmetric structure: win on one side regardless of outcome, capping max loss.')}
-    ${btcRow('Lock Target Price', `≤ ${((cfg.lock_target||0)*100).toFixed(0)}¢`,
-      'Only buy the lock if the opposite side is priced at or below this level. E.g. 10¢ means "buy the NO at 10¢ or less to lock in a guaranteed profit."')}
+    ${btcToggle(botId,'use_lock',cfg.use_lock,'Lock Trade','Buy opposite side at lock_target price to create asymmetric win structure.')}
+    ${btcRow('Lock Target Price', `≤ ${((cfg.lock_target||0)*100).toFixed(0)}¢`,'')}
 
     ${btcSection('🚪 Smart Exit — When to sell')}
-    ${btcRow('Trailing Take-Profit', `Sell ALL if bid drops ${((cfg.smart_exit_trail_pct||0)*100).toFixed(0)}% from peak`,
-      `Only activates once the bid has reached at least ${((cfg.smart_exit_min_peak||0)*100).toFixed(0)}¢. Tracks the highest bid seen; if it falls ${((cfg.smart_exit_trail_pct||0)*100).toFixed(0)}% from that peak, sell everything immediately.`)}
-    ${ex.map((t,i) => btcRow(`Profit Tier ${i+1}`,
-      `Sell ${(t.sell_fraction*100).toFixed(0)}% when profit ≥ ${(t.profit_pct*100).toFixed(0)}% of max possible`,
-      'Staged exit: locks in partial profits before the full trailing stop fires. Tier 1 sells half early, Tier 2 exits the rest.'
-    )).join('')}
-    ${btcRow('Time-Based Exit', `Sell if profitable with ≤ ${cfg.smart_exit_time_secs ?? '?'}s left in window`,
-      'If a position is in profit and the 15-min window is almost over, sell now rather than risk settlement going against you.')}
-    ${btcRow('Spot Reversal Exit', `Sell if Binance spot drops ${((cfg.smart_exit_spot_trail||0)*100).toFixed(2)}% from its peak`,
-      'Monitors live Binance spot price in parallel. If spot starts reversing from its high, exit the position immediately — spot leads Kalshi contracts by ~15s so this is an early warning signal.')}
+    ${btcRow('Trailing Take-Profit', `Sell ALL if bid drops ${((cfg.smart_exit_trail_pct||0)*100).toFixed(0)}% from peak`,'')}
+    ${ex.map((t,i) => btcRow(`Profit Tier ${i+1}`,`Sell ${(t.sell_fraction*100).toFixed(0)}% when profit ≥ ${(t.profit_pct*100).toFixed(0)}% of max possible`,'')).join('')}
+    ${btcRow('Time-Based Exit', `Sell if profitable with ≤ ${cfg.smart_exit_time_secs??'?'}s left in window`,'')}
+    ${btcRow('Spot Reversal Exit', `Sell if spot drops ${((cfg.smart_exit_spot_trail||0)*100).toFixed(2)}% from peak`,'')}
 
     ${isMomentum ? '<div class="rules-stopped" style="margin-top:.75rem">⏹ Container stopped — do not restart without new strategy</div>' : ''}
   </div>`;
@@ -1697,6 +1705,32 @@ function renderSystem(d) {
   html += `<div style="font-size:.72rem;color:#333;text-align:right;padding:.5rem 1rem">Last updated: ${new Date().toLocaleTimeString()}</div>`;
 
   return html;
+}
+
+async function saveBtcField(botId, field, value, type) {
+  const fb = document.getElementById(`fb-${botId}`);
+  if (fb) { fb.textContent = 'Saving…'; fb.className = 'rules-feedback'; }
+  let parsed = value;
+  if (type === 'number') parsed = parseFloat(value);
+  if (type === 'int')    parsed = parseInt(value);
+  if (type === 'bool')   parsed = value === true || value === 'true';
+  // streak_threshold and base_contracts are ints
+  if (field === 'streak_threshold' || field === 'base_contracts' || field === 'max_open_positions') parsed = parseInt(value);
+  try {
+    const res = await fetch(`/proxy/${botId}/api/bot/config`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({[field]: parsed}),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (fb) { fb.textContent = '✓ Saved'; fb.className = 'rules-feedback ok'; setTimeout(()=>{ if(fb) fb.textContent=''; }, 2000); }
+    } else {
+      if (fb) { fb.textContent = 'Error: ' + (data.error||'unknown'); fb.className = 'rules-feedback err'; }
+    }
+  } catch(e) {
+    if (fb) { fb.textContent = 'Network error'; fb.className = 'rules-feedback err'; }
+  }
 }
 
 async function saveSportField(sport, field, value) {
