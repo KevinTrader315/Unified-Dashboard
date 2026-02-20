@@ -1297,42 +1297,72 @@ function renderRules(sports, btc, mom, bb) {
 }
 
 function renderBounceBackCard(status) {
-  const mode = status ? (status.mode || 'paper').toUpperCase() : '?';
+  const mode  = status ? (status.mode || 'paper').toUpperCase() : '?';
   const alive = status && status.running;
   const color = '#06b6d4';
+  const contracts   = status ? (status.base_contracts ?? '?') : '?';
+  const threshold   = status ? (status.move_threshold   ?? 8)  : 8;
+  const entryMin    = status ? (status.entry_window_min ?? 240) : 240;
+  const entryMax    = status ? (status.entry_window_max ?? 360) : 360;
+  const maxOpen     = status ? (status.max_open_positions ?? 3) : 3;
 
   return `<div class="rules-card" style="border-top:3px solid ${color};max-width:520px">
     <div class="rules-card-header">
       <span class="rules-card-title">Bounce-Back</span>
       <span class="sub-card-badge">${mode}</span>
     </div>
+    <div style="font-size:.65rem;color:var(--text-dim);margin-bottom:.5rem">Changes save instantly to the live bot. <span class="rules-feedback" id="fb-bounce-back"></span></div>
 
     <div class="rules-subhead">📖 Strategy Overview</div>
     <div style="font-size:.8rem;color:var(--text-dim);line-height:1.6;margin-bottom:.75rem">
       Monitors BTC, ETH, and SOL Kalshi 15-min contracts for sharp intra-window price drops.
-      When a contract falls ≥ 8¢ between minutes 4–6 of a window, the bot bets on a bounce-back
+      When a contract falls ≥ ${threshold}¢ between minutes 4–6, the bot bets on a bounce-back
       — buying the oversold side with the expectation prices revert before settlement.
     </div>
 
     <div class="rules-subhead">🔍 Signal Detection</div>
-    ${btcRow('Assets', 'BTC &nbsp;|&nbsp; ETH &nbsp;|&nbsp; SOL', 'Three Kalshi 15-min contracts tracked simultaneously.')}
-    ${btcRow('Move Threshold', '≥ 8¢ drop within entry window', 'Contract must fall at least 8 cents from window open before entry is considered.')}
-    ${btcRow('Entry Window', 'Minutes 4–6 of the 15-min window (240–360s)', 'Only enters in the first half of the window. Avoids entries too close to settlement.')}
+    ${btcRow('Assets', 'BTC &nbsp;|&nbsp; ETH &nbsp;|&nbsp; SOL', '')}
+    ${btcRow('Move Threshold', `≥ ${threshold}¢ drop within entry window`, '')}
+    ${btcRow('Entry Window', `${entryMin}–${entryMax}s remaining (min 4–6 of 15)`, '')}
 
     <div class="rules-subhead">📐 Position Sizing</div>
-    ${btcRow('Contracts', '5 per trade', 'Fixed position size — no tier scaling.')}
-    ${btcRow('Capital Guard', 'Portal allocation enforced', 'Checks portal /api/capital/bounce-back/limit before every order.')}
+    <div class="btc-field-row">
+      <span class="btc-field-label">Base Contracts</span>
+      <span style="display:flex;align-items:center;gap:.3rem">
+        <input id="bb-contracts" type="number" min="1" max="50" value="${contracts}"
+          style="width:4rem;background:#0d1117;border:1px solid #30363d;border-radius:4px;
+                 color:#e6edf3;font-family:monospace;font-size:.78rem;padding:1px 4px;text-align:center">
+        <button onclick="saveBounceBackContracts()"
+          style="padding:1px 7px;border-radius:4px;cursor:pointer;font-family:monospace;font-size:.7rem;
+                 border:1px solid #30363d;background:#161b22;color:#58a6ff">✓</button>
+      </span>
+    </div>
+    ${btcRow('Max Open Positions', `${maxOpen}`, '')}
+    ${btcRow('Capital Guard', 'Portal allocation enforced', '')}
 
     <div class="rules-subhead">🚪 Exit</div>
-    ${btcRow('Exit Strategy', 'Hold to settlement', 'No active exit logic — position settles at window close. Bot relies on mean-reversion completing naturally.')}
-    ${btcRow('Duplicate Guard', 'One trade per asset per window', '_entered_windows set prevents re-entry in the same 15-min contract.')}
-
-    <div class="rules-subhead">📡 Data Source</div>
-    ${btcRow('Price Feed', 'Kalshi contract bid/ask (polled every 15s)', 'Compares current contract bid to opening bid to detect the move.')}
-    ${btcRow('Settlement', 'Kalshi 15-min contract window close', 'Win if price reverts; lose if it continues down.')}
+    ${btcRow('Exit Strategy', 'Hold to settlement', '')}
+    ${btcRow('Duplicate Guard', 'One trade per asset per window', '')}
 
     ${!alive ? '<div class="rules-stopped" style="margin-top:.75rem">⚠ Bot unreachable</div>' : ''}
   </div>`;
+}
+
+async function saveBounceBackContracts() {
+  const val = parseInt(document.getElementById('bb-contracts').value);
+  const fb  = document.getElementById('fb-bounce-back');
+  if (!val || val < 1 || val > 50) { fb.textContent='invalid'; fb.className='rules-feedback err'; return; }
+  fb.textContent = 'Saving…'; fb.className = 'rules-feedback';
+  try {
+    const r = await fetch('/proxy/bounce-back/api/config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({base_contracts: val}),
+    });
+    const d = await r.json();
+    if (d.ok) { fb.textContent = '✓ Saved'; fb.className = 'rules-feedback ok'; setTimeout(()=>fb.textContent='', 2000); }
+    else { fb.textContent = d.error || 'error'; fb.className = 'rules-feedback err'; }
+  } catch(e) { fb.textContent = 'Network error'; fb.className = 'rules-feedback err'; }
 }
 
 function renderSportCard(sport, cfg) {
