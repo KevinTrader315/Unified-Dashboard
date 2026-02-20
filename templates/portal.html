@@ -167,6 +167,35 @@
   .bot-badge.healthy { background: rgba(34,197,94,0.15); color: var(--green); }
   .bot-badge.unhealthy { background: rgba(239,68,68,0.15); color: var(--red); }
   .bot-badge.unknown { background: rgba(136,153,170,0.15); color: var(--text-dim); }
+  .mode-badge {
+    font-size: 0.7rem; padding: 3px 10px; border-radius: 4px;
+    font-weight: 700; letter-spacing: 0.5px; display: inline-flex;
+    align-items: center; gap: 5px;
+  }
+  .mode-badge.live {
+    background: rgba(34,197,94,0.15); color: var(--green);
+    border: 1px solid rgba(34,197,94,0.3);
+  }
+  .mode-badge.paper {
+    background: rgba(227,179,65,0.12); color: var(--yellow);
+    border: 1px solid rgba(227,179,65,0.25);
+  }
+  .mode-badge.live::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 0 0 rgba(34,197,94,0.4);
+    animation: pulse-live 1.5s infinite;
+  }
+  .mode-badge.paper::before {
+    content: ''; width: 6px; height: 6px; border-radius: 50%;
+    background: var(--yellow);
+  }
+  @keyframes pulse-live {
+    0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+    70%  { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  }
+  .card-header-badges { display: flex; gap: 6px; align-items: center; }
 
   .bot-stats {
     display: grid;
@@ -696,7 +725,9 @@ function renderOverview(data) {
 
       const isHealthy = bot.healthy;
       const hasError = !!bot.error;
-      const modeColor = bot.mode === 'LIVE' ? 'var(--green)' : 'var(--yellow)';
+      const modeStr = (bot.mode || '').toUpperCase();
+      const isLive = modeStr === 'LIVE';
+      const modeCls = isLive ? 'live' : 'paper';
 
       let statsHtml = '';
       if (hasError) {
@@ -705,8 +736,6 @@ function renderOverview(data) {
         statsHtml = '<div class="bot-stats">';
         statsHtml += '<div class="stat-item"><div class="stat-label">P&L</div>' +
           '<div class="stat-value ' + pnlClass(bot.pnl) + '">' + formatPnl(bot.pnl) + '</div></div>';
-        statsHtml += '<div class="stat-item"><div class="stat-label">Mode</div>' +
-          `<div class="stat-value" style="color:${modeColor};font-weight:700">${bot.mode || 'N/A'}</div></div>`;
         if (bot.win_rate !== undefined) {
           const wrColor = bot.win_rate >= 60 ? 'var(--green)' : bot.win_rate >= 45 ? '' : 'var(--red)';
           statsHtml += '<div class="stat-item"><div class="stat-label">Win Rate</div>' +
@@ -728,14 +757,18 @@ function renderOverview(data) {
         statsHtml += '</div>';
       }
 
-      const badgeClass = hasError ? 'unknown' : (isHealthy ? 'healthy' : 'unhealthy');
-      const badgeText = hasError ? 'OFFLINE' : (isHealthy ? 'LIVE' : 'DOWN');
+      const statusCls = hasError ? 'unknown' : (isHealthy ? 'healthy' : 'unhealthy');
+      const statusText = hasError ? 'OFFLINE' : (isHealthy ? 'OK' : 'DOWN');
       const desc = cfg.description ? `<div class="bot-card-desc">${cfg.description}</div>` : '';
+      const modeLabel = modeStr || 'UNKNOWN';
 
       card.innerHTML =
         '<div class="bot-card-header">' +
           '<span class="bot-card-title">' + bot.name + '</span>' +
-          '<span class="bot-badge ' + badgeClass + '">' + badgeText + '</span>' +
+          '<span class="card-header-badges">' +
+            `<span class="mode-badge ${modeCls}">${modeLabel}</span>` +
+            `<span class="bot-badge ${statusCls}">${statusText}</span>` +
+          '</span>' +
         '</div>' +
         desc +
         statsHtml +
