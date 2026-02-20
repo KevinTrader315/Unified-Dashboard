@@ -35,6 +35,16 @@ BOTS = {
         "pnl_extractor": "btc_range",
         "auth": None,
     },
+    "fvg-arb": {
+        "name": "FVG Arb",
+        "short": "FVG",
+        "color": "#bc8cff",
+        "host": "kalshi-fvg-arb",
+        "port": 5052,
+        "health_endpoint": "/api/bot/status",
+        "pnl_extractor": "btc_range",
+        "auth": None,
+    },
     "sports-arb": {
         "name": "Sports Arb",
         "short": "SPT",

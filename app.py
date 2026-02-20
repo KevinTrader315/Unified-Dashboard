@@ -79,7 +79,8 @@ def _proxy(bot_id: str, path: str):
         fwd_headers = [(k, v) for k, v in resp.headers.items()
                        if k.lower() not in excluded]
         return Response(resp.content, status=resp.status_code, headers=fwd_headers)
-    except requests.RequestException:
+    except requests.RequestException as e:
+        logger.error("Proxy to %s failed: %s %s", bot_id, type(e).__name__, e)
         return jsonify({"error": "Bot unreachable", "bot": bot_id}), 502
 
 
@@ -282,7 +283,8 @@ def overview():
                     entry.update(_extract_sports_arb_status(sr.json()))
                 except requests.RequestException:
                     pass
-        except requests.RequestException:
+        except requests.RequestException as e:
+            logger.error("Overview health check for %s failed: %s %s", bot_id, type(e).__name__, e)
             entry["error"] = "Unreachable"
         results[bot_id] = entry
 
