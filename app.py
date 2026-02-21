@@ -4,11 +4,15 @@ import json
 import logging
 import os
 import re
+import secrets
 import subprocess
 import threading
+import time
 
+import paramiko
 import requests
 from flask import Flask, request, Response, jsonify, render_template
+from flask_sock import Sock
 from functools import wraps
 
 from config import BOTS, BOT_HOST
@@ -16,6 +20,7 @@ from config import BOTS, BOT_HOST
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+sock = Sock(app)
 
 PROXY_TIMEOUT = 5  # seconds
 
@@ -686,6 +691,229 @@ def api_system():
         "services":   services,
         "resources":  {"mem_total_mb": total_mb, "mem_used_mb": used_mb, "mem_avail_mb": avail_mb, "disk": disk},
     })
+
+
+# ---------------------------------------------------------------------------
+# SSH Terminal
+# ---------------------------------------------------------------------------
+
+SSH_HOST = os.environ.get("SSH_HOST", "localhost")
+SSH_PORT = int(os.environ.get("SSH_PORT", "22"))
+SSH_USER = os.environ.get("SSH_USER", "")
+SSH_PASSWORD = os.environ.get("SSH_PASSWORD", "")
+SSH_KEY_PATH = os.environ.get("SSH_KEY_PATH", "")
+
+# Short-lived tokens for WebSocket authentication
+_ws_tokens = {}  # token -> expiry timestamp
+_ws_tokens_lock = threading.Lock()
+
+
+def _clean_expired_tokens():
+    now = time.time()
+    expired = [t for t, exp in _ws_tokens.items() if exp < now]
+    for t in expired:
+        _ws_tokens.pop(t, None)
+
+
+def _issue_ws_token():
+    with _ws_tokens_lock:
+        _clean_expired_tokens()
+        token = secrets.token_urlsafe(32)
+        _ws_tokens[token] = time.time() + 600  # 10 min expiry
+        return token
+
+
+def _validate_ws_token(token):
+    with _ws_tokens_lock:
+        exp = _ws_tokens.get(token)
+        if exp and exp > time.time():
+            return True
+        return False
+
+
+@app.route("/terminal")
+@_auth_required
+def terminal_page():
+    token = _issue_ws_token()
+    return render_template(
+        "terminal.html",
+        ws_token=token,
+        ssh_host=SSH_HOST,
+        ssh_port=SSH_PORT,
+        ssh_user=SSH_USER,
+        has_default_auth=bool(SSH_PASSWORD or SSH_KEY_PATH),
+    )
+
+
+@app.route("/terminal/token")
+@_auth_required
+def terminal_token():
+    return jsonify({"token": _issue_ws_token()})
+
+
+@sock.route("/terminal/ws")
+def terminal_ws(ws):
+    """WebSocket handler: relay between browser and SSH session."""
+    # Validate token from query string
+    token = request.args.get("token", "")
+    if AUTH_ENABLED and not _validate_ws_token(token):
+        ws.send(json.dumps({"type": "status", "status": "error",
+                            "message": "Unauthorized — reload the page"}))
+        return
+
+    # Wait for connect message
+    try:
+        raw = ws.receive(timeout=30)
+        if raw is None:
+            return
+        msg = json.loads(raw)
+    except Exception:
+        ws.send(json.dumps({"type": "status", "status": "error",
+                            "message": "Invalid connect message"}))
+        return
+
+    if msg.get("type") != "connect":
+        ws.send(json.dumps({"type": "status", "status": "error",
+                            "message": "Expected connect message"}))
+        return
+
+    host = msg.get("host", SSH_HOST) or SSH_HOST
+    port = int(msg.get("port", SSH_PORT) or SSH_PORT)
+    username = msg.get("username", SSH_USER) or SSH_USER
+
+    # Determine auth method
+    password = None
+    pkey = None
+    if msg.get("use_default_auth"):
+        password = SSH_PASSWORD or None
+        if SSH_KEY_PATH and os.path.isfile(SSH_KEY_PATH):
+            try:
+                pkey = paramiko.RSAKey.from_private_key_file(SSH_KEY_PATH)
+            except Exception:
+                try:
+                    pkey = paramiko.Ed25519Key.from_private_key_file(SSH_KEY_PATH)
+                except Exception:
+                    pass
+    else:
+        password = msg.get("password") or None
+
+    if not username:
+        ws.send(json.dumps({"type": "status", "status": "error",
+                            "message": "Username is required"}))
+        return
+
+    # Establish SSH connection
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        connect_kwargs = {
+            "hostname": host,
+            "port": port,
+            "username": username,
+            "timeout": 10,
+            "allow_agent": False,
+            "look_for_keys": False,
+        }
+        if pkey:
+            connect_kwargs["pkey"] = pkey
+        elif password:
+            connect_kwargs["password"] = password
+        else:
+            connect_kwargs["look_for_keys"] = True
+            connect_kwargs["allow_agent"] = True
+        client.connect(**connect_kwargs)
+    except paramiko.AuthenticationException:
+        ws.send(json.dumps({"type": "status", "status": "error",
+                            "message": "Authentication failed — check credentials"}))
+        client.close()
+        return
+    except Exception as e:
+        ws.send(json.dumps({"type": "status", "status": "error",
+                            "message": f"SSH connection failed: {e}"}))
+        client.close()
+        return
+
+    # Open interactive shell
+    try:
+        channel = client.invoke_shell(
+            term="xterm-256color",
+            width=80,
+            height=24,
+        )
+        channel.settimeout(0.1)
+    except Exception as e:
+        ws.send(json.dumps({"type": "status", "status": "error",
+                            "message": f"Failed to open shell: {e}"}))
+        client.close()
+        return
+
+    ws.send(json.dumps({"type": "status", "status": "connected",
+                        "message": f"Connected to {username}@{host}"}))
+
+    # SSH -> WebSocket reader thread
+    stop_event = threading.Event()
+
+    def ssh_reader():
+        try:
+            while not stop_event.is_set():
+                if channel.recv_ready():
+                    data = channel.recv(4096)
+                    if not data:
+                        break
+                    try:
+                        ws.send(json.dumps({
+                            "type": "output",
+                            "data": data.decode("utf-8", errors="replace"),
+                        }))
+                    except Exception:
+                        break
+                elif channel.closed:
+                    break
+                else:
+                    time.sleep(0.02)
+        except Exception:
+            pass
+        finally:
+            try:
+                ws.send(json.dumps({"type": "status", "status": "disconnected"}))
+            except Exception:
+                pass
+
+    reader = threading.Thread(target=ssh_reader, daemon=True)
+    reader.start()
+
+    # WebSocket -> SSH writer loop (runs in this thread)
+    try:
+        while not stop_event.is_set():
+            raw = ws.receive(timeout=1)
+            if raw is None:
+                break
+            try:
+                msg = json.loads(raw)
+            except Exception:
+                continue
+            if msg.get("type") == "input":
+                data = msg.get("data", "")
+                if data and not channel.closed:
+                    channel.sendall(data.encode("utf-8"))
+            elif msg.get("type") == "resize":
+                cols = int(msg.get("cols", 80))
+                rows = int(msg.get("rows", 24))
+                if not channel.closed:
+                    channel.resize_pty(width=cols, height=rows)
+    except Exception:
+        pass
+    finally:
+        stop_event.set()
+        try:
+            channel.close()
+        except Exception:
+            pass
+        try:
+            client.close()
+        except Exception:
+            pass
+        reader.join(timeout=2)
 
 
 # ---------------------------------------------------------------------------

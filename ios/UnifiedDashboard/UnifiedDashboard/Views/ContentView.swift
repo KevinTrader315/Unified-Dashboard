@@ -64,12 +64,18 @@ struct MainTabView: View {
                 }
                 .tag(2)
 
+            TerminalView()
+                .tabItem {
+                    Label("Terminal", systemImage: "apple.terminal.fill")
+                }
+                .tag(3)
+
             SettingsView(isInitialSetup: false)
                 .tabItem {
                     Label("Settings", systemImage: "gearshape.fill")
                 }
                 .badge(isConnected ? 0 : 1)
-                .tag(3)
+                .tag(4)
         }
         .tint(.portalGreen)
         .task { await checkConnection() }

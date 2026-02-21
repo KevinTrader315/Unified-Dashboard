@@ -24,6 +24,7 @@
 		A1000001000000000000000F /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000010 /* AuthManager.swift */; };
 		A10000010000000000000010 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000011 /* KeychainHelper.swift */; };
 		A10000010000000000000011 /* LockScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000012 /* LockScreenView.swift */; };
+		A10000010000000000000012 /* TerminalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000013 /* TerminalView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +46,7 @@
 		A20000010000000000000010 /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		A20000010000000000000011 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		A20000010000000000000012 /* LockScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockScreenView.swift; sourceTree = "<group>"; };
+		A20000010000000000000013 /* TerminalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalView.swift; sourceTree = "<group>"; };
 		A30000010000000000000001 /* UnifiedDashboard.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UnifiedDashboard.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -98,6 +100,7 @@
 				A2000001000000000000000A /* BotDashboardView.swift */,
 				A2000001000000000000000B /* SettingsView.swift */,
 				A20000010000000000000012 /* LockScreenView.swift */,
+				A20000010000000000000013 /* TerminalView.swift */,
 				A50000010000000000000007 /* Components */,
 			);
 			path = Views;
@@ -209,6 +212,7 @@
 				A1000001000000000000000F /* AuthManager.swift in Sources */,
 				A10000010000000000000010 /* KeychainHelper.swift in Sources */,
 				A10000010000000000000011 /* LockScreenView.swift in Sources */,
+				A10000010000000000000012 /* TerminalView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

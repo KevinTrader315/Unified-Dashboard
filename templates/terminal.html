@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Terminal</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    height: 100%; width: 100%;
+    background: #0a0e14;
+    color: #c9d1d9;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    overflow: hidden;
+    -webkit-text-size-adjust: none;
+  }
+  #app {
+    display: flex; flex-direction: column;
+    height: 100vh; height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* ── Header ── */
+  #header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    background: #0d1117;
+    border-bottom: 1px solid #21262d;
+    flex-shrink: 0;
+  }
+  #header .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #484f58;
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+  #header .dot.connected { background: #3fb950; box-shadow: 0 0 6px #3fb95066; }
+  #header .dot.error     { background: #f85149; }
+  #header .title {
+    font-size: 12px; font-weight: 600;
+    color: #8b949e;
+    flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #header .btn {
+    background: none; border: 1px solid #30363d;
+    color: #8b949e; border-radius: 6px;
+    padding: 4px 10px; font-size: 11px;
+    font-family: inherit; cursor: pointer;
+  }
+  #header .btn:active { background: #21262d; }
+
+  /* ── Connect form ── */
+  #connect-panel {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    flex: 1; padding: 24px;
+  }
+  #connect-panel h2 {
+    font-size: 16px; font-weight: 700; color: #e6edf3;
+    margin-bottom: 4px;
+  }
+  #connect-panel .subtitle {
+    font-size: 12px; color: #8b949e;
+    margin-bottom: 20px;
+  }
+  #connect-form {
+    width: 100%; max-width: 340px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  #connect-form .row {
+    display: flex; gap: 8px;
+  }
+  #connect-form .row > * { flex: 1; }
+  #connect-form .row .port { flex: 0 0 72px; }
+  #connect-form label {
+    font-size: 10px; font-weight: 600; color: #8b949e;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 3px; display: block;
+  }
+  #connect-form input {
+    width: 100%;
+    background: #161b22; border: 1px solid #30363d;
+    border-radius: 8px; padding: 10px 12px;
+    color: #e6edf3; font-family: inherit; font-size: 14px;
+    outline: none;
+  }
+  #connect-form input:focus { border-color: #388bfd; }
+  #connect-form input::placeholder { color: #484f58; }
+  #connect-btn {
+    margin-top: 6px;
+    background: #238636; border: none; border-radius: 8px;
+    color: #fff; font-family: inherit; font-size: 14px;
+    font-weight: 600; padding: 12px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  #connect-btn:active { background: #2ea043; }
+  #connect-btn:disabled { opacity: 0.5; cursor: default; }
+  #connect-error {
+    font-size: 12px; color: #f85149;
+    text-align: center; margin-top: 8px;
+    min-height: 16px;
+  }
+  .has-default {
+    font-size: 11px; color: #8b949e;
+    text-align: center; margin-top: 4px;
+  }
+
+  /* ── Terminal ── */
+  #terminal-wrap {
+    flex: 1;
+    display: none;
+    position: relative;
+    overflow: hidden;
+  }
+  #terminal-wrap.active { display: flex; flex-direction: column; }
+  #terminal {
+    flex: 1;
+    padding: 4px 0 0 4px;
+  }
+  .xterm { height: 100%; }
+
+  /* ── Mobile toolbar ── */
+  #toolbar {
+    display: flex; align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    background: #161b22;
+    border-top: 1px solid #21262d;
+    flex-shrink: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #toolbar button {
+    background: #21262d; border: 1px solid #30363d;
+    color: #c9d1d9; border-radius: 6px;
+    padding: 6px 10px; font-size: 12px;
+    font-family: inherit; cursor: pointer;
+    white-space: nowrap; flex-shrink: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #toolbar button:active { background: #30363d; }
+  #toolbar button.sticky { border-color: #388bfd; color: #58a6ff; }
+  #toolbar .sep {
+    width: 1px; height: 20px;
+    background: #30363d; flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header bar -->
+  <div id="header">
+    <div class="dot" id="status-dot"></div>
+    <span class="title" id="status-text">Not connected</span>
+    <button class="btn" id="disconnect-btn" style="display:none" onclick="doDisconnect()">Disconnect</button>
+  </div>
+
+  <!-- Connect form -->
+  <div id="connect-panel">
+    <h2>SSH Terminal</h2>
+    <p class="subtitle">Connect to your server</p>
+    <form id="connect-form" onsubmit="doConnect(event)">
+      <div class="row">
+        <div>
+          <label for="ssh-host">Host</label>
+          <input id="ssh-host" type="text" placeholder="hostname or IP" autocapitalize="none" autocorrect="off" value="{{ ssh_host }}">
+        </div>
+        <div class="port">
+          <label for="ssh-port">Port</label>
+          <input id="ssh-port" type="number" placeholder="22" value="{{ ssh_port }}">
+        </div>
+      </div>
+      <div>
+        <label for="ssh-user">Username</label>
+        <input id="ssh-user" type="text" placeholder="username" autocapitalize="none" autocorrect="off" value="{{ ssh_user }}">
+      </div>
+      <div>
+        <label for="ssh-pass">Password</label>
+        <input id="ssh-pass" type="password" placeholder="{{ 'Using server default' if has_default_auth else 'password' }}">
+      </div>
+      {% if has_default_auth %}
+      <p class="has-default">Leave password blank to use server-configured credentials</p>
+      {% endif %}
+      <button type="submit" id="connect-btn">Connect</button>
+      <div id="connect-error"></div>
+    </form>
+  </div>
+
+  <!-- Terminal area -->
+  <div id="terminal-wrap">
+    <div id="terminal"></div>
+    <div id="toolbar">
+      <button onclick="sendKey('ctrl')" id="btn-ctrl">Ctrl</button>
+      <button onclick="sendKey('esc')">Esc</button>
+      <button onclick="sendKey('tab')">Tab</button>
+      <div class="sep"></div>
+      <button onclick="sendKey('up')">&#9650;</button>
+      <button onclick="sendKey('down')">&#9660;</button>
+      <button onclick="sendKey('left')">&#9664;</button>
+      <button onclick="sendKey('right')">&#9654;</button>
+      <div class="sep"></div>
+      <button onclick="sendKey('pipe')">|</button>
+      <button onclick="sendKey('dash')">-</button>
+      <button onclick="sendKey('slash')">/</button>
+      <button onclick="sendKey('tilde')">~</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/addon-web-links@0.11.0/lib/addon-web-links.min.js"></script>
+<script>
+(function() {
+  var wsToken = '{{ ws_token }}';
+  var term = null;
+  var fitAddon = null;
+  var ws = null;
+  var ctrlPressed = false;
+
+  // DOM refs
+  var statusDot    = document.getElementById('status-dot');
+  var statusText   = document.getElementById('status-text');
+  var connectPanel = document.getElementById('connect-panel');
+  var terminalWrap = document.getElementById('terminal-wrap');
+  var disconnectBtn= document.getElementById('disconnect-btn');
+  var connectError = document.getElementById('connect-error');
+  var btnCtrl      = document.getElementById('btn-ctrl');
+
+  function setStatus(state, text) {
+    statusDot.className = 'dot ' + state;
+    statusText.textContent = text;
+  }
+
+  function showTerminal() {
+    connectPanel.style.display = 'none';
+    terminalWrap.classList.add('active');
+    disconnectBtn.style.display = '';
+    if (!term) initTerminal();
+    setTimeout(function() { fitAddon.fit(); term.focus(); }, 50);
+  }
+
+  function showConnect() {
+    terminalWrap.classList.remove('active');
+    connectPanel.style.display = '';
+    disconnectBtn.style.display = 'none';
+  }
+
+  function initTerminal() {
+    term = new Terminal({
+      cursorBlink: true,
+      cursorStyle: 'bar',
+      fontSize: 14,
+      fontFamily: "'SF Mono', Menlo, 'Courier New', monospace",
+      theme: {
+        background: '#0a0e14',
+        foreground: '#c9d1d9',
+        cursor: '#58a6ff',
+        cursorAccent: '#0a0e14',
+        selectionBackground: '#264f78',
+        black:   '#484f58', red:     '#ff7b72',
+        green:   '#3fb950', yellow:  '#d29922',
+        blue:    '#58a6ff', magenta: '#bc8cff',
+        cyan:    '#39d353', white:   '#b1bac4',
+        brightBlack:  '#6e7681', brightRed:    '#ffa198',
+        brightGreen:  '#56d364', brightYellow: '#e3b341',
+        brightBlue:   '#79c0ff', brightMagenta:'#d2a8ff',
+        brightCyan:   '#56d364', brightWhite:  '#f0f6fc',
+      },
+      scrollback: 5000,
+      allowProposedApi: true,
+    });
+
+    fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.loadAddon(new WebLinksAddon.WebLinksAddon());
+
+    term.open(document.getElementById('terminal'));
+    fitAddon.fit();
+
+    // Send input to server
+    term.onData(function(data) {
+      if (ctrlPressed) {
+        // Send ctrl+key
+        var ch = data.charCodeAt(0);
+        if (ch >= 97 && ch <= 122) data = String.fromCharCode(ch - 96); // a-z -> ctrl+a - ctrl+z
+        else if (ch >= 65 && ch <= 90) data = String.fromCharCode(ch - 64);
+        ctrlPressed = false;
+        btnCtrl.classList.remove('sticky');
+      }
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({type: 'input', data: data}));
+      }
+    });
+
+    // Handle resize
+    term.onResize(function(size) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({type: 'resize', cols: size.cols, rows: size.rows}));
+      }
+    });
+
+    window.addEventListener('resize', function() {
+      if (fitAddon) fitAddon.fit();
+    });
+
+    // Also refit when keyboard shows/hides on mobile
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', function() {
+        if (fitAddon) fitAddon.fit();
+      });
+    }
+  }
+
+  window.doConnect = function(e) {
+    e.preventDefault();
+    var host = document.getElementById('ssh-host').value.trim();
+    var port = parseInt(document.getElementById('ssh-port').value) || 22;
+    var user = document.getElementById('ssh-user').value.trim();
+    var pass = document.getElementById('ssh-pass').value;
+
+    if (!host || !user) {
+      connectError.textContent = 'Host and username are required';
+      return;
+    }
+
+    connectError.textContent = '';
+    document.getElementById('connect-btn').disabled = true;
+    setStatus('', 'Connecting...');
+
+    // Build WebSocket URL
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var wsUrl = proto + '//' + location.host + '/terminal/ws?token=' + encodeURIComponent(wsToken);
+    ws = new WebSocket(wsUrl);
+
+    ws.onopen = function() {
+      var msg = {type: 'connect', host: host, port: port, username: user};
+      if (pass) {
+        msg.password = pass;
+      } else {
+        msg.use_default_auth = true;
+      }
+      ws.send(JSON.stringify(msg));
+    };
+
+    ws.onmessage = function(event) {
+      var msg;
+      try { msg = JSON.parse(event.data); } catch(e) { return; }
+
+      if (msg.type === 'output') {
+        if (term) term.write(msg.data);
+      } else if (msg.type === 'status') {
+        if (msg.status === 'connected') {
+          setStatus('connected', 'Connected to ' + user + '@' + host);
+          showTerminal();
+          // Send initial resize
+          if (term && fitAddon) {
+            fitAddon.fit();
+            ws.send(JSON.stringify({type: 'resize', cols: term.cols, rows: term.rows}));
+          }
+        } else if (msg.status === 'error') {
+          setStatus('error', 'Error');
+          connectError.textContent = msg.message || 'Connection failed';
+          document.getElementById('connect-btn').disabled = false;
+          showConnect();
+        } else if (msg.status === 'disconnected') {
+          setStatus('', 'Disconnected');
+          if (term) term.write('\r\n\x1b[33m--- Session ended ---\x1b[0m\r\n');
+        }
+      }
+    };
+
+    ws.onclose = function() {
+      setStatus('', 'Disconnected');
+      document.getElementById('connect-btn').disabled = false;
+      if (term) term.write('\r\n\x1b[33m--- Connection closed ---\x1b[0m\r\n');
+    };
+
+    ws.onerror = function() {
+      setStatus('error', 'Connection error');
+      connectError.textContent = 'WebSocket connection failed';
+      document.getElementById('connect-btn').disabled = false;
+    };
+  };
+
+  window.doDisconnect = function() {
+    if (ws) { ws.close(); ws = null; }
+    if (term) { term.dispose(); term = null; fitAddon = null; }
+    showConnect();
+    setStatus('', 'Not connected');
+    // Refresh token for next connection
+    fetch('/terminal/token', {credentials: 'same-origin'}).then(function(r) {
+      return r.json();
+    }).then(function(data) {
+      if (data.token) wsToken = data.token;
+    }).catch(function(){});
+  };
+
+  window.sendKey = function(key) {
+    if (!term) return;
+    switch(key) {
+      case 'ctrl':
+        ctrlPressed = !ctrlPressed;
+        btnCtrl.classList.toggle('sticky', ctrlPressed);
+        term.focus();
+        return;
+      case 'esc':   term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'\x1b'})); return;
+      case 'tab':   term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'\t'})); return;
+      case 'up':    term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'\x1b[A'})); return;
+      case 'down':  term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'\x1b[B'})); return;
+      case 'right': term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'\x1b[C'})); return;
+      case 'left':  term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'\x1b[D'})); return;
+      case 'pipe':  term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'|'})); return;
+      case 'dash':  term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'-'})); return;
+      case 'slash': term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'/'})); return;
+      case 'tilde': term.focus(); if (ws) ws.send(JSON.stringify({type:'input',data:'~'})); return;
+    }
+  };
+})();
+</script>
+</body>
+</html>
