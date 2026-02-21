@@ -354,7 +354,7 @@ struct SettingsView: View {
                         HStack(spacing: 6) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.system(size: 11))
-                            Text("Credentials saved to Keychain")
+                            Text("Credentials saved securely")
                                 .font(.system(size: 11, design: .monospaced))
                         }
                         .foregroundStyle(Color.portalGreen)
