@@ -148,13 +148,15 @@ struct TerminalWebView: UIViewRepresentable {
 
         // If SSH credentials are saved, auto-fill and auto-connect
         if !sshHost.isEmpty && !sshUser.isEmpty && !sshPassword.isEmpty {
-            let escapedHost = sshHost.replacingOccurrences(of: "'", with: "\\'")
-            let escapedPort = sshPort.replacingOccurrences(of: "'", with: "\\'")
-            let escapedUser = sshUser.replacingOccurrences(of: "'", with: "\\'")
-            let escapedPass = sshPassword.replacingOccurrences(of: "'", with: "\\'")
+            let escapedHost = escapeForJS(sshHost)
+            let escapedPort = escapeForJS(sshPort)
+            let escapedUser = escapeForJS(sshUser)
+            let escapedPass = escapeForJS(sshPassword)
             let autoConnect = """
             (function() {
+                var attempts = 0;
                 function tryAutoConnect() {
+                    if (++attempts > 50) return;
                     var hostEl = document.getElementById('ssh-host');
                     var portEl = document.getElementById('ssh-port');
                     var userEl = document.getElementById('ssh-user');
@@ -165,7 +167,11 @@ struct TerminalWebView: UIViewRepresentable {
                     portEl.value = '\(escapedPort)';
                     userEl.value = '\(escapedUser)';
                     passEl.value = '\(escapedPass)';
-                    form.dispatchEvent(new Event('submit', {cancelable: true}));
+                    if (typeof doConnect === 'function') {
+                        doConnect(new Event('submit'));
+                    } else {
+                        form.requestSubmit();
+                    }
                 }
                 if (document.readyState === 'complete') tryAutoConnect();
                 else window.addEventListener('load', tryAutoConnect);
@@ -188,6 +194,13 @@ struct TerminalWebView: UIViewRepresentable {
         }
         webView.load(request)
         return webView
+    }
+
+    private func escapeForJS(_ str: String) -> String {
+        str.replacingOccurrences(of: "\\", with: "\\\\")
+           .replacingOccurrences(of: "'", with: "\\'")
+           .replacingOccurrences(of: "\n", with: "\\n")
+           .replacingOccurrences(of: "\r", with: "\\r")
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {}
