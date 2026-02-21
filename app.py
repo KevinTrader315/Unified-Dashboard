@@ -70,6 +70,9 @@ def _proxy(bot_id: str, path: str):
     headers = {k: v for k, v in request.headers if k.lower() not in
                 ("host", "connection", "transfer-encoding")}
     try:
+        # Some endpoints (e.g. /api/fills) paginate Kalshi API and take longer
+        slow_paths = ('fills', 'settlements')
+        effective_timeout = 60 if any(path.endswith(p) for p in slow_paths) else PROXY_TIMEOUT
         resp = requests.request(
             method=request.method,
             url=url,
@@ -77,7 +80,7 @@ def _proxy(bot_id: str, path: str):
             params=request.args,
             data=request.get_data(),
             auth=_bot_auth(bot_id),
-            timeout=PROXY_TIMEOUT,
+            timeout=effective_timeout,
             allow_redirects=False,
         )
         excluded = {"transfer-encoding", "connection", "content-encoding", "content-length"}
