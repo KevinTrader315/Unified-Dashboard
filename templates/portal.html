@@ -819,23 +819,58 @@ function fetchOverview() {
     });
 }
 
-// Initial load + auto-refresh
+// Initial load + smart auto-refresh (pauses when tab/page not visible)
 fetchOverview();
-setInterval(fetchOverview, 5000);
+let overviewInterval = null;
+let activeTab = 'overview';
+
+function startOverviewPolling() {
+  if (!overviewInterval) {
+    overviewInterval = setInterval(fetchOverview, 5000);
+  }
+}
+function stopOverviewPolling() {
+  if (overviewInterval) {
+    clearInterval(overviewInterval);
+    overviewInterval = null;
+  }
+}
+
+// Pause all polling when browser tab is hidden
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) {
+    stopOverviewPolling();
+    if (capitalInterval) { clearInterval(capitalInterval); capitalInterval = null; }
+  } else {
+    // Resume based on which portal tab is active
+    if (activeTab === 'overview') { fetchOverview(); startOverviewPolling(); }
+    if (activeTab === 'capital') { fetchCapital(); fetchTransferHistory(); capitalInterval = setInterval(function() { fetchCapital(); fetchTransferHistory(); }, 10000); }
+  }
+});
+
+startOverviewPolling();
 
 // ---- Capital tab (virtual ledger) ----
 let capitalData = null;
 let capitalInterval = null;
 
-// Auto-refresh capital when tab is active
+// Auto-refresh capital when tab is active; pause overview when on other tabs
 document.getElementById('tabBar').addEventListener('click', function(e) {
   const tab = e.target.closest('.tab');
   if (!tab) return;
-  if (tab.dataset.tab === 'capital') {
+  activeTab = tab.dataset.tab;
+  if (activeTab === 'capital') {
     fetchCapital();
     fetchTransferHistory();
     if (!capitalInterval) capitalInterval = setInterval(function() { fetchCapital(); fetchTransferHistory(); }, 10000);
+    stopOverviewPolling();
+  } else if (activeTab === 'overview') {
+    fetchOverview();
+    startOverviewPolling();
+    if (capitalInterval) { clearInterval(capitalInterval); capitalInterval = null; }
   } else {
+    // On bot dashboards, claude, rules, system — stop all polling
+    stopOverviewPolling();
     if (capitalInterval) { clearInterval(capitalInterval); capitalInterval = null; }
   }
 });
@@ -1064,6 +1099,10 @@ function _esc(str) {
 
 function addClaudeMsg(role, html) {
   claudeMessages.push({role: role, html: html});
+  // Cap conversation history to prevent unbounded memory growth
+  if (claudeMessages.length > 100) {
+    claudeMessages = claudeMessages.slice(-100);
+  }
   renderClaudeMsgs();
 }
 
